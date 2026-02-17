@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Elden Ring Overlay</title>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: Georgia, serif;
+  color: #e6dcc8;
+}
+
+.wrapper {
+  position: relative;
+  width: 420px;
+  max-height: 900px;
+  padding: 18px;
+  box-sizing: border-box;
+
+  background: linear-gradient(
+    rgba(0, 0, 0, 0.75),
+    rgba(10, 10, 10, 0.85)
+  );
+
+  border-radius: 14px;
+
+  box-shadow:
+    0 0 25px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(201, 164, 74, 0.4);
+
+  backdrop-filter: blur(4px);
+}
+
+.wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+
+  box-shadow:
+    inset 0 0 30px rgba(201, 164, 74, 0.15),
+    inset 0 0 60px rgba(0, 0, 0, 0.7);
+}
+
+/* Goldrahmen als Overlay */
+.wrapper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  border: 2px solid #c9a44a;
+}
+
+.scroll {
+  height: 480px;
+  overflow: hidden;
+}
+
+/* Scrollbar unsichtbar */
+.scroll::-webkit-scrollbar {
+  width: 0;
+}
+
+.area {
+  margin-bottom: 22px;
+}
+
+.area-title {
+  font-size: 18px;
+  padding-bottom: 3px;
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.area-title::after {
+  content: "";
+  display: block;
+  width: 85%;
+  height: 1px;
+  background: #7d6a3d;
+  margin-top: 3px;
+}
+
+.area-progress {
+  font-size: 14px;
+  opacity: 0.7;
+  margin-bottom: 6px;
+}
+
+.boss {
+  display: flex;
+  justify-content: flex-start; 
+  align-items: center;
+  padding: 2px 0;
+}
+
+.boss-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.boss.done .boss-name {
+  opacity: 0.35;          /* Name ausgegraut */
+}
+
+.deaths {
+  color: #c9a44a;
+  min-width: 45px; 
+  text-align: left;
+  margin-right: 10px;
+}
+
+.main-boss {
+  color: #e3b873;
+  font-weight: bold;
+}
+
+/* Angepinnte Bosse */
+.pinned-container {
+  border-bottom: 2px solid #7d6a3d;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+}
+
+.pinned-boss {
+  background: rgba(201, 164, 74, 0.1); /* Leichter goldener Schimmer */
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.header-stats {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: #c9a44a;
+  display: flex;
+  gap: 20px;
+}
+
+@keyframes deathPulse {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.25); color: #e05a4f; }
+  60%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.death-animate {
+  animation: deathPulse 0.8s ease-out;
+}
+
+@keyframes bossPulse {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.2); color: #e3b873; }
+  60%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.boss-animate {
+  animation: bossPulse 0.8s ease-out;
+}
+
+</style>
+</head>
+
+<body>
+<div class="wrapper">
+    <div class="header-stats">
+        <span id="total-deaths">💀 Gesamt-Tode: 0</span>
+        <span id="total-boss-progress">🏆 Bosse: 0 / 0</span>
+    </div>
+
+    <div id="pinned-area" class="pinned-container" style="display: none;"></div>
+
+  <div class="scroll" id="content"></div>
+</div>
+
+<script>
+let lastGlobalDeaths = 0;
+let lastDoneBosses = 0;
+let lastTotalBosses = 0;
+
+const MAIN_BOSSES = [
+  "Margit, das Grausame Mal",
+  "Godrick der Verpflanzte",
+  "Rennala, Königin des Vollmonds",
+  "Roter Wolf von Radagon",
+  "Sternengeißel Radahn",
+  "Drachenbaumwächter",
+  "Godfrey, Erster Eldenfürst",
+  "Morgott, König des Mals",
+  "Feuerriese",
+  "Bestienkleriker / Maliketh, die Schwarze Klinge",
+  "Duo der Götterskalpe",
+  "Godfrey, Erster Eldenfürst (Hoarah Loux)",
+  "Sir Gideon Ofnir, der Allwissende",
+  "Radagon von der Goldenen Ordnung / Eldenbestie",
+];
+
+const SPREADSHEET_ID = "1r9BzZJYFrk4rQLlMn4ZPBBUuc8u_peqwThTi1UTCQcE";
+const URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=OBS_OVERLAY&tqx=out:json`;
+
+async function loadData() {
+  const res = await fetch(URL + "&t=" + Date.now());
+  const text = await res.text();
+  const json = JSON.parse(text.substring(47).slice(0, -2));
+  const rows = json.table.rows;
+
+  const areas = {};
+  let globalTotalBosses = 0;
+  let globalDoneBosses = 0;
+
+  const globalDeaths = Number(rows[0]?.c[9]?.v) || 0;
+
+  rows.forEach(r => {
+    const area = r.c[0]?.v;
+    const boss = r.c[1]?.v;
+    if (!area || !boss) return;
+
+    // ✅ Done prüfen (TRUE/WAHR/1)
+    const rawDone = r.c[2]?.v;
+    const done = [true, "TRUE", "WAHR", 1].includes(rawDone);
+
+    // ✅ Angepinnt prüfen (Spalte E = 4)
+    const rawPinned = r.c[4]?.v;
+    const pinned = [true, "TRUE", "WAHR", 1].includes(rawPinned);
+
+    const deaths = Number(r.c[3]?.v) || 0;
+    const rawCollapsed = r.c[5]?.v; // falls du manuelles Einklappen noch willst
+
+    globalTotalBosses++;
+    if (done) globalDoneBosses++;
+
+    if (!areas[area]) {
+      const rawCollapsed = r.c[5]?.v;
+
+      areas[area] = {
+        total: 0,
+        done: 0,
+        bosses: [],
+        collapsed: [true, "TRUE", "WAHR", 1].includes(rawCollapsed) // ← nur Checkbox entscheidet
+      };
+    }
+
+    areas[area].total++;
+    if (done) areas[area].done++;
+
+    areas[area].bosses.push({ boss, done, deaths, pinned });
+  });
+
+
+  // Header aktualisieren
+  const deathEl = document.getElementById("total-deaths");
+  if (globalDeaths !== lastGlobalDeaths) {
+    deathEl.classList.remove("death-animate");
+    void deathEl.offsetWidth;
+    deathEl.classList.add("death-animate");
+  }
+  deathEl.innerText = `💀 Gesamt-Tode: ${globalDeaths}`;
+  lastGlobalDeaths = globalDeaths;
+
+  const bossEl = document.getElementById("total-boss-progress");
+  if (globalDoneBosses !== lastDoneBosses || globalTotalBosses !== lastTotalBosses) {
+    bossEl.classList.remove("boss-animate");
+    void bossEl.offsetWidth;
+    bossEl.classList.add("boss-animate");
+  }
+  bossEl.innerText = `🏆 Bosse: ${globalDoneBosses} / ${globalTotalBosses}`;
+  lastDoneBosses = globalDoneBosses;
+  lastTotalBosses = globalTotalBosses;
+
+  // Render
+  // 1. Render Pinned Bosses
+  const pinnedArea = document.getElementById("pinned-area");
+  pinnedArea.innerHTML = "";
+  let hasPinned = false;
+
+  // Alle Bosse aus allen Gebieten sammeln, die gepinnt sind
+  const allPinned = [];
+  Object.values(areas).forEach(areaData => {
+    areaData.bosses.forEach(b => {
+      if (b.pinned) allPinned.push(b);
+    });
+  });
+
+  if (allPinned.length > 0) {
+    hasPinned = true;
+    allPinned.forEach(b => {
+      const bossDiv = document.createElement("div");
+      const isMain = MAIN_BOSSES.includes(b.boss);
+      bossDiv.className = "boss pinned-boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
+      
+      bossDiv.innerHTML = `
+        <span class="deaths">📌 ${b.deaths}</span>
+        <span class="boss-name">${b.boss}</span>
+      `;
+      pinnedArea.appendChild(bossDiv);
+    });
+  }
+  pinnedArea.style.display = hasPinned ? "block" : "none";
+
+  // 2. Render Normal Areas
+  const content = document.getElementById("content");
+  content.innerHTML = "";
+
+  Object.entries(areas).forEach(([area, data]) => {
+    const areaDiv = document.createElement("div");
+    areaDiv.className = "area";
+
+    areaDiv.innerHTML = `
+      <div class="area-title">
+        ${data.collapsed ? "▶" : "▼"} ${area}
+      </div>
+      <div class="area-progress">${data.done} / ${data.total}</div>
+    `;
+
+    if (!data.collapsed) {
+      data.bosses.forEach(b => {
+        const bossDiv = document.createElement("div");
+        const isMain = MAIN_BOSSES.includes(b.boss);
+
+        // Hier lassen wir die normale Darstellung, aber ohne die pinned-boss Klasse
+        let classes = "boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
+        bossDiv.className = classes;
+
+        bossDiv.innerHTML = `
+          <span class="deaths">† ${b.deaths}</span>
+          <span class="boss-name">${b.boss}</span>
+        `;
+
+        areaDiv.appendChild(bossDiv);
+      });
+    }
+    content.appendChild(areaDiv);
+  });
+}
+
+loadData();
+setInterval(loadData, 5000);
+
+// Auto-Scroll
+let scrollDir = 1;
+setInterval(() => {
+  const el = document.getElementById("content");
+  if (!el) return;
+  el.scrollTop += scrollDir;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight) scrollDir = -1;
+  if (el.scrollTop <= 0) scrollDir = 1;
+}, 50);
+
+</script>
+</body>
+</html>
