@@ -11,14 +11,17 @@ html, body {
   background: transparent;
   font-family: Georgia, serif;
   color: #e6dcc8;
+  overflow: hidden;
 }
 
 .wrapper {
   position: relative;
   width: 420px;
-  max-height: 900px;
+  height: 560px;
   padding: 18px;
   box-sizing: border-box;
+  overflow: hidden;
+  padding: 20px;
 
   background: linear-gradient(
     rgba(0, 0, 0, 0.75),
@@ -34,10 +37,11 @@ html, body {
   backdrop-filter: blur(4px);
 }
 
+
 .wrapper::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: 1px;
   border-radius: 14px;
   pointer-events: none;
 
@@ -50,16 +54,18 @@ html, body {
 .wrapper::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: 1px;
   border-radius: 14px;
   pointer-events: none;
   border: 2px solid #c9a44a;
+  box-sizing: border-box;
 }
 
 .scroll {
   height: 480px;
   overflow: hidden;
 }
+
 
 /* Scrollbar unsichtbar */
 .scroll::-webkit-scrollbar {
@@ -129,11 +135,14 @@ html, body {
 }
 
 .pinned-boss {
-  background: rgba(201, 164, 74, 0.1); /* Leichter goldener Schimmer */
+  background: rgba(201, 164, 74, 0.1);
   padding: 4px 8px;
   border-radius: 4px;
   margin-bottom: 4px;
+
+  animation: pinnedPulse 2.5s ease-in-out infinite;
 }
+
 
 .header-stats {
   font-size: 18px;
@@ -159,6 +168,12 @@ html, body {
   30%  { transform: scale(1.2); color: #e3b873; }
   60%  { transform: scale(0.95); }
   100% { transform: scale(1); }
+}
+
+@keyframes pinnedPulse {
+  0%   { box-shadow: 0 0 4px rgba(201,164,74,0.15); }
+  50%  { box-shadow: 0 0 18px rgba(201,164,74,0.45); }
+  100% { box-shadow: 0 0 4px rgba(201,164,74,0.15); }
 }
 
 .boss-animate {
@@ -356,6 +371,3 @@ setInterval(() => {
 </script>
 </body>
 </html>
-
-
-
