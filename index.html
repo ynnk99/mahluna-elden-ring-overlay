@@ -180,6 +180,75 @@ html, body {
   animation: bossPulse 0.8s ease-out;
 }
 
+/* ================= VICTORY OVERLAY ================= */
+
+.victory-overlay {
+  position: absolute;
+  width: 420px;
+  height: 560px;
+  background: radial-gradient(circle, rgba(201,164,74,0.3), rgba(0,0,0,0.9));
+  top: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 100; /* hoch genug, um über allem zu liegen */
+}
+
+.victory-text {
+  font-size: 42px;
+  color: #e3b873;
+  text-shadow: 0 0 20px #c9a44a, 0 0 40px #c9a44a;
+  letter-spacing: 4px;
+  transform: scale(0.8);
+  opacity: 0;
+  text-align: center;
+}
+
+/* Animationen */
+.victory-show {
+  animation: overlayFade 3s ease forwards;
+}
+
+.victory-text-show {
+  animation: textPop 3s ease forwards;
+}
+
+@keyframes overlayFade {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes textPop {
+  0% { opacity: 0; transform: scale(0.6); }
+  20% { opacity: 1; transform: scale(1.1); }
+  80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+
+/* ================= PARTICLES ================= */
+
+.particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #c9a44a;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.9;
+  animation: explode 1s ease-out forwards;
+}
+
+@keyframes explode {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--x), var(--y)) scale(0.2); opacity: 0; }
+}
+
+
 </style>
 </head>
 
@@ -193,9 +262,22 @@ html, body {
     <div id="pinned-area" class="pinned-container" style="display: none;"></div>
 
   <div class="scroll" id="content"></div>
+  <div class="victory-overlay" id="victoryOverlay">
+  <div class="victory-text" id="victoryText">BOSS ERLEDIGT</div>
+  </div>
+
 </div>
 
 <script>
+
+/* ===== VICTORY CONFIG ===== */
+
+const VICTORY_DELAY = 2000;
+const PARTICLE_COUNT = 50;
+
+let previousBossStates = {};
+let autoScrollPaused = false;
+
 let lastGlobalDeaths = 0;
 let lastDoneBosses = 0;
 let lastTotalBosses = 0;
@@ -249,6 +331,29 @@ async function loadData() {
     const pinned = [true, "TRUE", "WAHR", 1].includes(rawPinned);
 
     const deaths = Number(r.c[3]?.v) || 0;
+    const key = area + "|" + boss;
+
+    if (!(key in previousBossStates)) {
+      previousBossStates[key] = done;
+    } else if (!previousBossStates[key] && done) {
+
+      // Prüfen, ob Main Boss
+      if (MAIN_BOSSES.includes(boss)) {
+        // Warten bis DOM neu gerendert wurde
+        setTimeout(() => {
+          const bossElements = document.querySelectorAll(".boss");
+          bossElements.forEach(el => {
+            if (el.querySelector(".boss-name")?.innerText === boss) {
+              triggerVictory(el);
+            }
+          });
+        }, 100);
+      }
+
+    }
+    previousBossStates[key] = done;
+
+
     const rawCollapsed = r.c[5]?.v; // falls du manuelles Einklappen noch willst
 
     globalTotalBosses++;
@@ -358,20 +463,95 @@ async function loadData() {
   });
 }
 
+/* ================= VICTORY SYSTEM ================= */
+
+function triggerVictory(el) {
+
+  autoScrollPaused = true;
+
+  const container = document.getElementById("content");
+
+  const topPos = el.offsetTop - container.clientHeight / 2;
+
+  container.scrollTo({
+    top: topPos,
+    behavior: "smooth"
+  });
+
+  setTimeout(() => {
+
+    showOverlay();
+    spawnParticles();
+
+    el.style.transition = "all .4s ease";
+    el.style.transform = "scale(1.15)";
+    el.style.boxShadow = "0 0 25px #c9a44a";
+
+    setTimeout(() => {
+      el.style.transform = "scale(1)";
+      el.style.boxShadow = "none";
+      autoScrollPaused = false;
+    }, 2500);
+
+  }, VICTORY_DELAY);
+}
+
+function showOverlay(){
+  const overlay=document.getElementById("victoryOverlay");
+  const text=document.getElementById("victoryText");
+
+  overlay.classList.add("victory-show");
+  text.classList.add("victory-text-show");
+
+  setTimeout(()=>{
+    overlay.classList.remove("victory-show");
+    text.classList.remove("victory-text-show");
+  },3000);
+}
+
+function spawnParticles(){
+  const wrapper=document.querySelector(".wrapper");
+
+  for(let i=0;i<PARTICLE_COUNT;i++){
+    const p=document.createElement("div");
+    p.className="particle";
+
+    const angle=Math.random()*2*Math.PI;
+    const distance=120+Math.random()*80;
+
+    const x=Math.cos(angle)*distance+"px";
+    const y=Math.sin(angle)*distance+"px";
+
+    p.style.left="50%";
+    p.style.top="50%";
+    p.style.setProperty("--x",x);
+    p.style.setProperty("--y",y);
+
+    wrapper.appendChild(p);
+    setTimeout(()=>p.remove(),1000);
+  }
+}
+
+
 loadData();
 setInterval(loadData, 5000);
 
 // Auto-Scroll
 let scrollDir = 1;
 setInterval(() => {
+  if (autoScrollPaused) return;
+
   const el = document.getElementById("content");
   if (!el) return;
+
   el.scrollTop += scrollDir;
+
   if (el.scrollTop + el.clientHeight >= el.scrollHeight) scrollDir = -1;
   if (el.scrollTop <= 0) scrollDir = 1;
+
 }, 50);
+
 
 </script>
 </body>
 </html>
-
