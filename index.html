@@ -259,11 +259,20 @@ html, body {
         <span id="total-boss-progress">🏆 Bosse: 0 / 0</span>
     </div>
 
+    <div id="boss-timer" style="
+      font-size:18px;
+      margin-bottom:12px;
+      color:#c9a44a;
+      display:none;
+    ">
+    ⏳ Aktueller Boss: 00:00:00
+  </div>
+
     <div id="pinned-area" class="pinned-container" style="display: none;"></div>
 
   <div class="scroll" id="content"></div>
   <div class="victory-overlay" id="victoryOverlay">
-  <div class="victory-text" id="victoryText">BOSS GELEGT</div>
+  <div class="victory-text" id="victoryText">BOSS ERLEDIGT</div>
   </div>
 
 </div>
@@ -305,22 +314,96 @@ const MAIN_BOSSES = [
 const SPREADSHEET_ID = "1r9BzZJYFrk4rQLlMn4ZPBBUuc8u_peqwThTi1UTCQcE";
 const URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=OBS_OVERLAY&tqx=out:json`;
 
+/* ================= TIMER ENGINE ================= */
+
+let timerRunning = false;
+let timerStart = 0;
+let elapsedAtStop = 0;       // ✅ FIX 3: store elapsed time when paused
+let currentBossName = "Aktueller Boss";
+let timerVisible = false;
+let lastResetState = false;
+
+function updateTimerDisplay() {
+  const timerElement = document.getElementById("boss-timer");
+  if (!timerElement) return;
+
+  // ✅ FIX 2: This is the ONLY place that touches the DOM
+  timerElement.style.display = timerVisible ? "block" : "none";
+
+  // ✅ FIX 3: Use frozen elapsed time when stopped, live time when running
+  const diff = timerRunning
+    ? Math.floor((Date.now() - timerStart) / 1000)
+    : Math.floor(elapsedAtStop / 1000);
+
+  const hours   = String(Math.floor(diff / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+  const seconds = String(diff % 60).padStart(2, "0");
+
+  timerElement.innerText = `⏳ ${currentBossName}: ${hours}:${minutes}:${seconds}`;
+}
+
+setInterval(updateTimerDisplay, 1000);
+
 async function loadData() {
-  const res = await fetch(URL + "&t=" + Date.now());
+  const res  = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
   const json = JSON.parse(text.substring(47).slice(0, -2));
   const rows = json.table.rows;
+
+  // ✅ Define isTrue FIRST before anything uses it
+  const isTrue = v => [true, "TRUE", "WAHR", 1].includes(v);
+
+  const timerStartFlag   = rows[0]?.c[10]?.v;
+  const timerResetFlag   = rows[1]?.c[10]?.v;
+  const timerVisibleFlag = rows[2]?.c[10]?.v;
+
+  const startChecked   = isTrue(timerStartFlag);
+  const resetChecked   = isTrue(timerResetFlag);
+  const visibleChecked = isTrue(timerVisibleFlag);
+
+
+  /* ===== RESET ===== */
+  if (resetChecked && !lastResetState) {
+    // Only reset on the RISING EDGE (false → true), not every poll cycle
+    timerStart    = Date.now();
+    elapsedAtStop = 0;
+    if (timerRunning) {
+      timerStart = Date.now(); // keep running from 0
+    }
+  }
+  lastResetState = resetChecked;
+
+  /* ===== START / STOP ===== */
+  // ✅ FIX 1+3: K1 is solely responsible for running state
+  if (startChecked) {
+    if (!timerRunning) {
+      timerStart    = Date.now() - elapsedAtStop; // resume from where it stopped
+      timerRunning  = true;
+    }
+  } else {
+    if (timerRunning) {
+      elapsedAtStop = Date.now() - timerStart;    // freeze elapsed time on stop
+      timerRunning  = false;
+    }
+  }
+
+  /* ===== SICHTBARKEIT ===== */
+  // ✅ FIX 4: Simple direct assignment, no unnecessary guard
+  timerVisible = visibleChecked;
+
+  // ✅ FIX 2: No DOM updates here — updateTimerDisplay() handles all rendering
+
 
   const areas = {};
   let globalTotalBosses = 0;
   let globalDoneBosses = 0;
 
-  const globalDeaths = Number(rows[0]?.c[9]?.v) || 0;
+  const globalDeaths = Number(rows[1]?.c[9]?.v) || 0;
 
-  rows.forEach(r => {
-    const area = r.c[0]?.v;
-    const boss = r.c[1]?.v;
-    if (!area || !boss) return;
+  rows.slice(1).forEach(r => {
+  const area = r.c[0]?.v?.trim();
+  const boss = r.c[1]?.v?.trim();
+  if (!area || !boss) return; // nur echte Bosszeilen
 
     // ✅ Done prüfen (TRUE/WAHR/1)
     const rawDone = r.c[2]?.v;
@@ -352,6 +435,8 @@ async function loadData() {
 
     }
     previousBossStates[key] = done;
+
+    console.log("K3 raw value:", timerVisibleFlag, "| isTrue:", isTrue(timerVisibleFlag));
 
 
     const rawCollapsed = r.c[5]?.v; // falls du manuelles Einklappen noch willst
@@ -555,4 +640,3 @@ setInterval(() => {
 </script>
 </body>
 </html>
-
