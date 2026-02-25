@@ -469,7 +469,7 @@ async function loadData() {
     void deathEl.offsetWidth;
     deathEl.classList.add("death-animate");
   }
-  deathEl.innerText = `💀 Gesamt-Tode: ${globalDeaths}`;
+  deathEl.innerText = `💀 Tode: ${globalDeaths}`;
   lastGlobalDeaths = globalDeaths;
 
   const bossEl = document.getElementById("total-boss-progress");
@@ -640,5 +640,6 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
 
 
