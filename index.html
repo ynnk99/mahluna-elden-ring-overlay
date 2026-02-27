@@ -658,22 +658,23 @@ setInterval(() => {
 
   el.scrollTop += scrollDir * 0.7;
 
-  // Unten angekommen
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight) {
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+  const atTop = el.scrollTop <= 0;
+
+  if (atBottom) {
     scrollPause = true;
     setTimeout(() => {
       scrollDir = -1;
       scrollPause = false;
-    }, 2500); // 2.5 Sekunden Pause
+    }, 2500);
   }
 
-  // Oben angekommen
-  if (el.scrollTop <= 0) {
+  if (atTop) {
     scrollPause = true;
     setTimeout(() => {
       scrollDir = 1;
       scrollPause = false;
-    }, 2500); // 2.5 Sekunden Pause
+    }, 2500);
   }
 
 }, 50);
@@ -682,6 +683,7 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
 
 
 
