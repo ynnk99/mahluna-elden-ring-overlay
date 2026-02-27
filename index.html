@@ -350,8 +350,11 @@ async function loadData() {
   const json = JSON.parse(text.substring(47).slice(0, -2));
   const rows = json.table.rows;
 
-  // ✅ Define isTrue FIRST before anything uses it
   const isTrue = v => [true, "TRUE", "WAHR", 1].includes(v);
+
+  // K4 und K5 sitzen in Zeile 4 und 5 → Index 3 und 4
+  const baseGameFlag = isTrue(rows[0]?.c[15]?.v); // P1
+  const dlcFlag      = isTrue(rows[1]?.c[15]?.v); // P2
 
   const timerStartFlag   = rows[0]?.c[10]?.v;
   const timerResetFlag   = rows[1]?.c[10]?.v;
@@ -400,7 +403,18 @@ async function loadData() {
 
   const globalDeaths = Number(rows[1]?.c[9]?.v) || 0;
 
-  rows.slice(1).forEach(r => {
+  rows.forEach((r, index) => {
+
+  const sheetRow = index + 1; // echte Tabellen-Zeilennummer
+
+  // === BASE GAME FILTER (bis Zeile 168) ===
+  if (sheetRow <= 169 && !baseGameFlag) return;
+
+  // === DLC FILTER (Zeile 170–211) ===
+  if (sheetRow >= 171 && sheetRow <= 212 && !dlcFlag) return;
+
+  // Zeile 169 ist deine Trennzeile → ignorieren
+  if (sheetRow === 170) return;
   const area = r.c[0]?.v?.trim();
   const boss = r.c[1]?.v?.trim();
   if (!area || !boss) return; // nur echte Bosszeilen
@@ -640,6 +654,7 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
 
 
 
