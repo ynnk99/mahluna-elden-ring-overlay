@@ -355,7 +355,7 @@ async function loadData() {
 
   const timerStartFlag   = rows[0]?.c[10]?.v;
   const timerResetFlag   = rows[1]?.c[10]?.v;
-  const timerVisibleFlag = rows[2]?.c[10]?.v;
+  const timerVisibleFlag = rows[0]?.c[11]?.v;
 
   const startChecked   = isTrue(timerStartFlag);
   const resetChecked   = isTrue(timerResetFlag);
@@ -640,6 +640,7 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
 
 
 
