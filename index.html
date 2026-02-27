@@ -408,7 +408,27 @@ async function loadData() {
   let globalTotalBosses = 0;
   let globalDoneBosses = 0;
 
-  const globalDeaths = Number(rows[1]?.c[9]?.v) || 0;
+  // ================================
+// GESAMT TODE (abhängig von P1 / P2)
+// ================================
+
+  // J2 = Zeile 2 → index 1
+  const baseDeaths = Number(rows[1]?.c[9]?.v) || 0;
+  
+  // J171 = Zeile 171 → index 170
+  const dlcDeaths  = Number(rows[170]?.c[9]?.v) || 0;
+  
+  let globalDeaths = 0;
+  
+  if (baseGameFlag && dlcFlag) {
+    globalDeaths = baseDeaths + dlcDeaths;
+  } else if (baseGameFlag) {
+    globalDeaths = baseDeaths;
+  } else if (dlcFlag) {
+    globalDeaths = dlcDeaths;
+  } else {
+    globalDeaths = 0;
+  }
 
   rows.forEach((r, index) => {
 
@@ -698,6 +718,7 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
 
 
 
