@@ -316,7 +316,7 @@ const MAIN_BOSSES = [
   "Midra Lord of Frenzied Flame",
   "Commander Gaius",
   "Romina, Saint of the Bud",
-  "Promised Consort +  Radahn Consort of Miquella",
+  "Promised Consort + Radahn Consort of Miquella",
 ];
 
 const SPREADSHEET_ID = "1r9BzZJYFrk4rQLlMn4ZPBBUuc8u_peqwThTi1UTCQcE";
@@ -522,7 +522,10 @@ async function loadData() {
     hasPinned = true;
     allPinned.forEach(b => {
       const bossDiv = document.createElement("div");
-      const isMain = MAIN_BOSSES.includes(b.boss);
+      const normalize = str => str.trim().toLowerCase().replace(/\s+/g, " ");
+      const isMain = MAIN_BOSSES
+      .map(normalize)
+      .includes(normalize(b.boss));
       bossDiv.className = "boss pinned-boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
       
       bossDiv.innerHTML = `
@@ -662,6 +665,7 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
 
 
 
