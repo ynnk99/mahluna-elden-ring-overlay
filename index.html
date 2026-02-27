@@ -648,16 +648,33 @@ setInterval(loadData, 5000);
 
 // Auto-Scroll
 let scrollDir = 1;
+let scrollPause = false;
+
 setInterval(() => {
-  if (autoScrollPaused) return;
+  if (autoScrollPaused || scrollPause) return;
 
   const el = document.getElementById("content");
   if (!el) return;
 
   el.scrollTop += scrollDir;
 
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight) scrollDir = -1;
-  if (el.scrollTop <= 0) scrollDir = 1;
+  // Unten angekommen
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight) {
+    scrollPause = true;
+    setTimeout(() => {
+      scrollDir = -1;
+      scrollPause = false;
+    }, 2500); // 2.5 Sekunden Pause
+  }
+
+  // Oben angekommen
+  if (el.scrollTop <= 0) {
+    scrollPause = true;
+    setTimeout(() => {
+      scrollDir = 1;
+      scrollPause = false;
+    }, 2500); // 2.5 Sekunden Pause
+  }
 
 }, 50);
 
@@ -665,6 +682,7 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
 
 
 
