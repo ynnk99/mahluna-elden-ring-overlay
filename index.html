@@ -656,7 +656,7 @@ setInterval(() => {
   const el = document.getElementById("content");
   if (!el) return;
 
-  el.scrollTop += scrollDir;
+  el.scrollTop += scrollDir * 0.7;
 
   // Unten angekommen
   if (el.scrollTop + el.clientHeight >= el.scrollHeight) {
@@ -682,6 +682,7 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
 
 
 
