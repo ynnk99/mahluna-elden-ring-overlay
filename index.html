@@ -360,7 +360,6 @@ async function loadData() {
 
   const isTrue = v => [true, "TRUE", "WAHR", 1].includes(v);
 
-  // K4 und K5 sitzen in Zeile 4 und 5 → Index 3 und 4
   const baseGameFlag = isTrue(rows[0]?.c[15]?.v); // P1
   const dlcFlag      = isTrue(rows[1]?.c[15]?.v); // P2
 
@@ -436,7 +435,7 @@ async function loadData() {
   // ================================
 
   const isBaseGame = sheetRow >= 3 && sheetRow <= 169;
-  const isDLC      = sheetRow >= 171 && sheetRow <= 211;
+  const isDLC      = sheetRow >= 171 && sheetRow <= 212;
 
   // Wenn Base Game Boss aber Base deaktiviert → überspringen
   if (isBaseGame && !baseGameFlag) return;
@@ -699,6 +698,7 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
 
 
 
