@@ -454,8 +454,8 @@ async function loadData() {
   // BASE / DLC FILTER
   // ================================
 
-  const isBaseGame = sheetRow >= 3 && sheetRow <= 169;
-  const isDLC      = sheetRow >= 171 && sheetRow <= 212;
+  const isBaseGame = sheetRow >= 3 && sheetRow <= 167;
+  const isDLC      = sheetRow >= 169 && sheetRow <= 212;
 
   // Wenn Base Game Boss aber Base deaktiviert → überspringen
   if (isBaseGame && !baseGameFlag) return;
