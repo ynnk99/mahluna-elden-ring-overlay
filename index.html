@@ -681,43 +681,44 @@ function spawnParticles(){
 loadData();
 setInterval(loadData, 5000);
 
-// Auto-Scroll
-let scrollDir = 1;
-let scrollPause = false;
+function autoScroll() {
+  if (!autoScrollPaused && !scrollPause) {
 
-setInterval(() => {
-  if (autoScrollPaused || scrollPause) return;
+    const el = document.getElementById("content");
+    if (!el) return;
 
-  const el = document.getElementById("content");
-  if (!el) return;
+    el.scrollTop += scrollDir * 2;
 
-  el.scrollTop += scrollDir * 0.7;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+    const atTop = el.scrollTop <= 0;
 
-  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-  const atTop = el.scrollTop <= 0;
+    if (atBottom) {
+      scrollPause = true;
+      setTimeout(() => {
+        scrollDir = -1;
+        scrollPause = false;
+      }, 2500);
+    }
 
-  if (atBottom) {
-    scrollPause = true;
-    setTimeout(() => {
-      scrollDir = -1;
-      scrollPause = false;
-    }, 2500);
+    if (atTop) {
+      scrollPause = true;
+      setTimeout(() => {
+        scrollDir = 1;
+        scrollPause = false;
+      }, 2500);
+    }
   }
 
-  if (atTop) {
-    scrollPause = true;
-    setTimeout(() => {
-      scrollDir = 1;
-      scrollPause = false;
-    }, 2500);
-  }
+  requestAnimationFrame(autoScroll);
+}
 
-}, 50);
+requestAnimationFrame(autoScroll);
 
 
 </script>
 </body>
 </html>
+
 
 
 
