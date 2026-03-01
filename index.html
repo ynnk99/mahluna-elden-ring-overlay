@@ -37,7 +37,6 @@ html, body {
   backdrop-filter: blur(4px);
 }
 
-
 .wrapper::before {
   content: "";
   position: absolute;
@@ -50,7 +49,6 @@ html, body {
     inset 0 0 60px rgba(0, 0, 0, 0.7);
 }
 
-/* Goldrahmen als Overlay */
 .wrapper::after {
   content: "";
   position: absolute;
@@ -66,8 +64,6 @@ html, body {
   overflow: hidden;
 }
 
-
-/* Scrollbar unsichtbar */
 .scroll::-webkit-scrollbar {
   width: 0;
 }
@@ -100,7 +96,7 @@ html, body {
 
 .boss {
   display: flex;
-  justify-content: flex-start; 
+  justify-content: flex-start;
   align-items: center;
   padding: 2px 0;
 }
@@ -112,12 +108,12 @@ html, body {
 }
 
 .boss.done .boss-name {
-  opacity: 0.35;          /* Name ausgegraut */
+  opacity: 0.35;
 }
 
 .deaths {
   color: #c9a44a;
-  min-width: 45px; 
+  min-width: 45px;
   text-align: left;
   margin-right: 10px;
 }
@@ -127,7 +123,6 @@ html, body {
   font-weight: bold;
 }
 
-/* Angepinnte Bosse */
 .pinned-container {
   border-bottom: 2px solid #7d6a3d;
   margin-bottom: 15px;
@@ -139,10 +134,8 @@ html, body {
   padding: 4px 8px;
   border-radius: 4px;
   margin-bottom: 4px;
-
   animation: pinnedPulse 2.5s ease-in-out infinite;
 }
-
 
 .header-stats {
   font-size: 18px;
@@ -180,8 +173,6 @@ html, body {
   animation: bossPulse 0.8s ease-out;
 }
 
-/* ================= VICTORY OVERLAY ================= */
-
 .victory-overlay {
   position: absolute;
   width: 420px;
@@ -194,7 +185,7 @@ html, body {
   align-items: center;
   pointer-events: none;
   opacity: 0;
-  z-index: 100; /* hoch genug, um über allem zu liegen */
+  z-index: 100;
 }
 
 .victory-text {
@@ -207,7 +198,6 @@ html, body {
   text-align: center;
 }
 
-/* Animationen */
 .victory-show {
   animation: overlayFade 3s ease forwards;
 }
@@ -230,8 +220,6 @@ html, body {
   100% { opacity: 0; transform: scale(0.9); }
 }
 
-/* ================= PARTICLES ================= */
-
 .particle {
   position: absolute;
   width: 6px;
@@ -247,39 +235,30 @@ html, body {
   0% { transform: translate(0,0) scale(1); opacity: 1; }
   100% { transform: translate(var(--x), var(--y)) scale(0.2); opacity: 0; }
 }
-
-
 </style>
 </head>
 
 <body>
 <div class="wrapper">
-    <div class="header-stats">
-        <span id="total-deaths">💀 Tode: 0</span>
-        <span id="total-boss-progress">🏆 Bosse: 0 / 0</span>
-    </div>
+  <div class="header-stats">
+    <span id="total-deaths">💀 Tode: 0</span>
+    <span id="total-boss-progress">🏆 Bosse: 0 / 0</span>
+  </div>
 
-    <div id="boss-timer" style="
-      font-size:18px;
-      margin-bottom:12px;
-      color:#c9a44a;
-      display:none;
-    ">
+  <div id="boss-timer" style="font-size:18px; margin-bottom:12px; color:#c9a44a; display:none;">
     ⏳ Aktueller Boss: 00:00:00
   </div>
 
-    <div id="pinned-area" class="pinned-container" style="display: none;"></div>
+  <div id="pinned-area" class="pinned-container" style="display: none;"></div>
 
   <div class="scroll" id="content"></div>
-  <div class="victory-overlay" id="victoryOverlay">
-  <div class="victory-text" id="victoryText">BOSS ERLEDIGT</div>
-  </div>
 
+  <div class="victory-overlay" id="victoryOverlay">
+    <div class="victory-text" id="victoryText">BOSS ERLEDIGT</div>
+  </div>
 </div>
 
 <script>
-
-/* ===== VICTORY CONFIG ===== */
 
 const VICTORY_DELAY = 2000;
 const PARTICLE_COUNT = 50;
@@ -326,7 +305,7 @@ const URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sh
 
 let timerRunning = false;
 let timerStart = 0;
-let elapsedAtStop = 0;       // ✅ FIX 3: store elapsed time when paused
+let elapsedAtStop = 0;
 let currentBossName = "Aktueller Boss";
 let timerVisible = false;
 let lastResetState = false;
@@ -335,10 +314,8 @@ function updateTimerDisplay() {
   const timerElement = document.getElementById("boss-timer");
   if (!timerElement) return;
 
-  // ✅ FIX 2: This is the ONLY place that touches the DOM
   timerElement.style.display = timerVisible ? "block" : "none";
 
-  // ✅ FIX 3: Use frozen elapsed time when stopped, live time when running
   const diff = timerRunning
     ? Math.floor((Date.now() - timerStart) / 1000)
     : Math.floor(elapsedAtStop / 1000);
@@ -371,155 +348,114 @@ async function loadData() {
   const resetChecked   = isTrue(timerResetFlag);
   const visibleChecked = isTrue(timerVisibleFlag);
 
-
   /* ===== RESET ===== */
   if (resetChecked && !lastResetState) {
-    // Only reset on the RISING EDGE (false → true), not every poll cycle
     timerStart    = Date.now();
     elapsedAtStop = 0;
-    if (timerRunning) {
-      timerStart = Date.now(); // keep running from 0
-    }
+    if (timerRunning) timerStart = Date.now();
   }
   lastResetState = resetChecked;
 
   /* ===== START / STOP ===== */
-  // ✅ FIX 1+3: K1 is solely responsible for running state
   if (startChecked) {
     if (!timerRunning) {
-      timerStart    = Date.now() - elapsedAtStop; // resume from where it stopped
-      timerRunning  = true;
+      timerStart   = Date.now() - elapsedAtStop;
+      timerRunning = true;
     }
   } else {
     if (timerRunning) {
-      elapsedAtStop = Date.now() - timerStart;    // freeze elapsed time on stop
+      elapsedAtStop = Date.now() - timerStart;
       timerRunning  = false;
     }
   }
 
-  /* ===== SICHTBARKEIT ===== */
-  // ✅ FIX 4: Simple direct assignment, no unnecessary guard
   timerVisible = visibleChecked;
-
-  // ✅ FIX 2: No DOM updates here — updateTimerDisplay() handles all rendering
-
 
   const areas = {};
   let globalTotalBosses = 0;
   let globalDoneBosses = 0;
 
   // ================================
-// GESAMT TODE (abhängig von P1 / P2)
-// ================================
+  // GESAMT TODE
+  // ================================
+  const baseDeaths = Number(rows[1]?.c[9]?.v)   || 0; // J2  → index 1
+  const dlcDeaths  = Number(rows[170]?.c[9]?.v) || 0; // J171 → index 170
 
-  // J2 = Zeile 2 → index 1
-  const baseDeaths = Number(rows[1]?.c[9]?.v) || 0;
-  
-  // J171 = Zeile 171 → index 170
-  const dlcDeaths  = Number(rows[170]?.c[9]?.v) || 0;
-  
   let globalDeaths = 0;
-  
-  if (baseGameFlag && dlcFlag) {
-    globalDeaths = baseDeaths + dlcDeaths;
-  } else if (baseGameFlag) {
-    globalDeaths = baseDeaths;
-  } else if (dlcFlag) {
-    globalDeaths = dlcDeaths;
-  } else {
-    globalDeaths = 0;
-  }
+  if (baseGameFlag && dlcFlag) globalDeaths = baseDeaths + dlcDeaths;
+  else if (baseGameFlag)       globalDeaths = baseDeaths;
+  else if (dlcFlag)            globalDeaths = dlcDeaths;
+
+  // ================================
+  // BOSS ROWS
+  // Dynamic section detection by content:
+  //   Base game: all rows before "SHADOW OF THE ERDTREE DLC" separator
+  //   DLC:       all rows after the separator
+  // ================================
+
+  // Find separator index once before the loop
+  const separatorIndex = rows.findIndex(r => r.c[1]?.v?.trim() === "SHADOW OF THE ERDTREE DLC");
 
   rows.forEach((r, index) => {
+    const area = r.c[0]?.v?.trim();
+    const boss = r.c[1]?.v?.trim();
 
-  const sheetRow = index + 1; // echte Tabellenzeile
+    // Header & leere Zeilen ignorieren
+    if (area === "Gebiet" && boss === "Boss") return;
+    if (!area || !boss) return;
 
-  const area = r.c[0]?.v?.trim();
-  const boss = r.c[1]?.v?.trim();
+    // Separator row itself → never render
+    if (boss === "SHADOW OF THE ERDTREE DLC") return;
 
-  // ================================
-  // HEADER & UNGÜLTIGE ZEILEN BLOCKEN
-  // ================================
+    // Section = position relative to separator
+    const isBaseGame = separatorIndex === -1 || index < separatorIndex;
+    const isDLC      = separatorIndex !== -1  && index > separatorIndex;
 
-  // Header-Zeile ignorieren
-  if (area === "Gebiet" && boss === "Boss") return;
+    if (isBaseGame && !baseGameFlag) return; // P1 = FALSE → skip base game rows
+    if (isDLC      && !dlcFlag)      return; // P2 = FALSE → skip DLC rows
 
-  // Leere Zeilen ignorieren
-  if (!area || !boss) return;
+    // ================================
+    // BOSS-LOGIK
+    // ================================
+    const rawDone   = r.c[2]?.v;
+    const done      = [true, "TRUE", "WAHR", 1].includes(rawDone);
+    const rawPinned = r.c[4]?.v;
+    const pinned    = [true, "TRUE", "WAHR", 1].includes(rawPinned);
+    const deaths    = Number(r.c[3]?.v) || 0;
+    const key       = area + "|" + boss;
 
-  // Trennzeile 168 ignorieren
-  if (sheetRow === 168) return;
-
-  // ================================
-  // BASE / DLC FILTER
-  // ================================
-
-  const isBaseGame = sheetRow >= 3 && sheetRow <= 167;
-  const isDLC      = sheetRow >= 169 && sheetRow <= 212;
-
-  // Wenn Base Game Boss aber Base deaktiviert → überspringen
-  if (isBaseGame && !baseGameFlag) return;
-
-  // Wenn DLC Boss aber DLC deaktiviert → überspringen
-  if (isDLC && !dlcFlag) return;
-
-  // Alles außerhalb dieser Bereiche ignorieren
-  if (!isBaseGame && !isDLC) return;
-
-  // ================================
-  // NORMALE BOSS-LOGIK
-  // ================================
-
-  const rawDone   = r.c[2]?.v;
-  const done      = [true, "TRUE", "WAHR", 1].includes(rawDone);
-
-  const rawPinned = r.c[4]?.v;
-  const pinned    = [true, "TRUE", "WAHR", 1].includes(rawPinned);
-
-  const deaths = Number(r.c[3]?.v) || 0;
-  const key = area + "|" + boss;
-
-  if (!(key in previousBossStates)) {
-    previousBossStates[key] = done;
-  } else if (!previousBossStates[key] && done) {
-
-    if (MAIN_BOSSES.includes(boss)) {
+    if (!(key in previousBossStates)) {
+      previousBossStates[key] = done;
+    } else if (!previousBossStates[key] && done && MAIN_BOSSES.includes(boss)) {
       setTimeout(() => {
-        const bossElements = document.querySelectorAll(".boss");
-        bossElements.forEach(el => {
-          if (el.querySelector(".boss-name")?.innerText === boss) {
-            triggerVictory(el);
-          }
+        document.querySelectorAll(".boss").forEach(el => {
+          if (el.querySelector(".boss-name")?.innerText === boss) triggerVictory(el);
         });
       }, 100);
     }
-  }
+    previousBossStates[key] = done;
 
-  previousBossStates[key] = done;
+    globalTotalBosses++;
+    if (done) globalDoneBosses++;
 
-  globalTotalBosses++;
-  if (done) globalDoneBosses++;
+    if (!areas[area]) {
+      const rawCollapsed = r.c[5]?.v;
+      areas[area] = {
+        total: 0,
+        done: 0,
+        bosses: [],
+        collapsed: [true, "TRUE", "WAHR", 1].includes(rawCollapsed)
+      };
+    }
 
-  if (!areas[area]) {
-    const rawCollapsed = r.c[5]?.v;
+    areas[area].total++;
+    if (done) areas[area].done++;
+    areas[area].bosses.push({ boss, done, deaths, pinned });
+  });
 
-    areas[area] = {
-      total: 0,
-      done: 0,
-      bosses: [],
-      collapsed: [true, "TRUE", "WAHR", 1].includes(rawCollapsed)
-    };
-  }
-
-  areas[area].total++;
-  if (done) areas[area].done++;
-
-  areas[area].bosses.push({ boss, done, deaths, pinned });
-
-});
-
-
-  // Header aktualisieren
+  // ================================
+  // HEADER
+  // ================================
   const deathEl = document.getElementById("total-deaths");
   if (globalDeaths !== lastGlobalDeaths) {
     deathEl.classList.remove("death-animate");
@@ -539,18 +475,16 @@ async function loadData() {
   lastDoneBosses = globalDoneBosses;
   lastTotalBosses = globalTotalBosses;
 
-  // Render
-  // 1. Render Pinned Bosses
+  // ================================
+  // RENDER PINNED BOSSES
+  // ================================
   const pinnedArea = document.getElementById("pinned-area");
   pinnedArea.innerHTML = "";
   let hasPinned = false;
 
-  // Alle Bosse aus allen Gebieten sammeln, die gepinnt sind
   const allPinned = [];
   Object.values(areas).forEach(areaData => {
-    areaData.bosses.forEach(b => {
-      if (b.pinned) allPinned.push(b);
-    });
+    areaData.bosses.forEach(b => { if (b.pinned) allPinned.push(b); });
   });
 
   if (allPinned.length > 0) {
@@ -558,21 +492,17 @@ async function loadData() {
     allPinned.forEach(b => {
       const bossDiv = document.createElement("div");
       const normalize = str => str.trim().toLowerCase().replace(/\s+/g, " ");
-      const isMain = MAIN_BOSSES
-      .map(normalize)
-      .includes(normalize(b.boss));
+      const isMain = MAIN_BOSSES.map(normalize).includes(normalize(b.boss));
       bossDiv.className = "boss pinned-boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
-      
-      bossDiv.innerHTML = `
-        <span class="deaths">📌 ${b.deaths}</span>
-        <span class="boss-name">${b.boss}</span>
-      `;
+      bossDiv.innerHTML = `<span class="deaths">📌 ${b.deaths}</span><span class="boss-name">${b.boss}</span>`;
       pinnedArea.appendChild(bossDiv);
     });
   }
   pinnedArea.style.display = hasPinned ? "block" : "none";
 
-  // 2. Render Normal Areas
+  // ================================
+  // RENDER NORMAL AREAS
+  // ================================
   const content = document.getElementById("content");
   content.innerHTML = "";
 
@@ -581,9 +511,7 @@ async function loadData() {
     areaDiv.className = "area";
 
     areaDiv.innerHTML = `
-      <div class="area-title">
-        ${data.collapsed ? "▶" : "▼"} ${area}
-      </div>
+      <div class="area-title">${data.collapsed ? "▶" : "▼"} ${area}</div>
       <div class="area-progress">${data.done} / ${data.total}</div>
     `;
 
@@ -591,16 +519,8 @@ async function loadData() {
       data.bosses.forEach(b => {
         const bossDiv = document.createElement("div");
         const isMain = MAIN_BOSSES.includes(b.boss);
-
-        // Hier lassen wir die normale Darstellung, aber ohne die pinned-boss Klasse
-        let classes = "boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
-        bossDiv.className = classes;
-
-        bossDiv.innerHTML = `
-          <span class="deaths">† ${b.deaths}</span>
-          <span class="boss-name">${b.boss}</span>
-        `;
-
+        bossDiv.className = "boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
+        bossDiv.innerHTML = `<span class="deaths">† ${b.deaths}</span><span class="boss-name">${b.boss}</span>`;
         areaDiv.appendChild(bossDiv);
       });
     }
@@ -611,72 +531,50 @@ async function loadData() {
 /* ================= VICTORY SYSTEM ================= */
 
 function triggerVictory(el) {
-
   autoScrollPaused = true;
-
   const container = document.getElementById("content");
-
-  const topPos = el.offsetTop - container.clientHeight / 2;
-
-  container.scrollTo({
-    top: topPos,
-    behavior: "smooth"
-  });
+  container.scrollTo({ top: el.offsetTop - container.clientHeight / 2, behavior: "smooth" });
 
   setTimeout(() => {
-
     showOverlay();
     spawnParticles();
-
     el.style.transition = "all .4s ease";
     el.style.transform = "scale(1.15)";
     el.style.boxShadow = "0 0 25px #c9a44a";
-
     setTimeout(() => {
       el.style.transform = "scale(1)";
       el.style.boxShadow = "none";
       autoScrollPaused = false;
     }, 2500);
-
   }, VICTORY_DELAY);
 }
 
-function showOverlay(){
-  const overlay=document.getElementById("victoryOverlay");
-  const text=document.getElementById("victoryText");
-
+function showOverlay() {
+  const overlay = document.getElementById("victoryOverlay");
+  const text    = document.getElementById("victoryText");
   overlay.classList.add("victory-show");
   text.classList.add("victory-text-show");
-
-  setTimeout(()=>{
+  setTimeout(() => {
     overlay.classList.remove("victory-show");
     text.classList.remove("victory-text-show");
-  },3000);
+  }, 3000);
 }
 
-function spawnParticles(){
-  const wrapper=document.querySelector(".wrapper");
-
-  for(let i=0;i<PARTICLE_COUNT;i++){
-    const p=document.createElement("div");
-    p.className="particle";
-
-    const angle=Math.random()*2*Math.PI;
-    const distance=120+Math.random()*80;
-
-    const x=Math.cos(angle)*distance+"px";
-    const y=Math.sin(angle)*distance+"px";
-
-    p.style.left="50%";
-    p.style.top="50%";
-    p.style.setProperty("--x",x);
-    p.style.setProperty("--y",y);
-
+function spawnParticles() {
+  const wrapper = document.querySelector(".wrapper");
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const p = document.createElement("div");
+    p.className = "particle";
+    const angle    = Math.random() * 2 * Math.PI;
+    const distance = 120 + Math.random() * 80;
+    p.style.left = "50%";
+    p.style.top  = "50%";
+    p.style.setProperty("--x", Math.cos(angle) * distance + "px");
+    p.style.setProperty("--y", Math.sin(angle) * distance + "px");
     wrapper.appendChild(p);
-    setTimeout(()=>p.remove(),1000);
+    setTimeout(() => p.remove(), 1000);
   }
 }
-
 
 loadData();
 setInterval(loadData, 5000);
@@ -685,36 +583,13 @@ setInterval(loadData, 5000);
 let scrollDir = 1;
 setInterval(() => {
   if (autoScrollPaused) return;
-
   const el = document.getElementById("content");
   if (!el) return;
-
   el.scrollTop += scrollDir;
-
   if (el.scrollTop + el.clientHeight >= el.scrollHeight) scrollDir = -1;
   if (el.scrollTop <= 0) scrollDir = 1;
-
 }, 50);
-
-
 
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
