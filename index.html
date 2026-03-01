@@ -579,16 +579,70 @@ function spawnParticles() {
 loadData();
 setInterval(loadData, 5000);
 
-// Auto-Scroll
-let scrollDir = 1;
-setInterval(() => {
-  if (autoScrollPaused) return;
+/* ================= SMOOTH 60FPS SCROLL WITH END PAUSES ================= */
+
+const SCROLL_SPEED   = 0.8;   // pixels per frame (~36px/s at 60fps) — adjust to taste
+const PAUSE_DURATION = 2500;  // ms to pause at each end
+
+let scrollPos     = 0;
+let scrollDir     = 1;
+let isPaused      = false;
+let pauseUntil    = 0;
+let lastTimestamp = null;
+
+function smoothScroll(timestamp) {
+  requestAnimationFrame(smoothScroll);
+
+  if (autoScrollPaused) {
+    lastTimestamp = null;
+    return;
+  }
+
+  if (lastTimestamp === null) {
+    lastTimestamp = timestamp;
+    return;
+  }
+
+  const delta = timestamp - lastTimestamp;
+  lastTimestamp = timestamp;
+
+  // Still within a pause window — do nothing
+  if (isPaused) {
+    if (timestamp < pauseUntil) return;
+    isPaused = false;
+  }
+
   const el = document.getElementById("content");
   if (!el) return;
-  el.scrollTop += scrollDir;
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight) scrollDir = -1;
-  if (el.scrollTop <= 0) scrollDir = 1;
-}, 50);
+
+  const maxScroll = el.scrollHeight - el.clientHeight;
+
+  // If content fits without scrolling, nothing to do
+  if (maxScroll <= 0) return;
+
+  // Advance position proportionally to elapsed time (frame-rate independent)
+  scrollPos += scrollDir * SCROLL_SPEED * (delta / (1000 / 60));
+
+  // Hit the bottom
+  if (scrollPos >= maxScroll) {
+    scrollPos  = maxScroll;
+    scrollDir  = -1;
+    isPaused   = true;
+    pauseUntil = timestamp + PAUSE_DURATION;
+  }
+
+  // Hit the top
+  if (scrollPos <= 0) {
+    scrollPos  = 0;
+    scrollDir  = 1;
+    isPaused   = true;
+    pauseUntil = timestamp + PAUSE_DURATION;
+  }
+
+  el.scrollTop = scrollPos;
+}
+
+requestAnimationFrame(smoothScroll);
 
 </script>
 </body>
