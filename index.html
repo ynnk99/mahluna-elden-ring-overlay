@@ -59,6 +59,23 @@ html, body {
   box-sizing: border-box;
 }
 
+/* ============================= */
+/* MINIMAL OVERLAY MODE          */
+/* ============================= */
+
+.wrapper.simple-mode {
+  width: 220px;
+  height: auto;
+  padding: 10px 12px;   /* vorher 20px → deutlich kompakter */
+}
+
+.wrapper.simple-mode .header-stats {
+  flex-direction: column;
+  gap: 6px;             /* Abstand zwischen Tode und Bosse */
+  font-size: 20px;
+  margin-bottom: 3px;     /* entfernt zusätzlichen Abstand */
+}
+
 .scroll {
   height: 480px;
   overflow: hidden;
@@ -330,6 +347,9 @@ function updateTimerDisplay() {
 setInterval(updateTimerDisplay, 1000);
 
 async function loadData() {
+  const pinnedArea = document.getElementById("pinned-area");
+  const content = document.getElementById("content");
+  const wrapper = document.querySelector(".wrapper");
   const res  = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
   const json = JSON.parse(text.substring(47).slice(0, -2));
@@ -347,6 +367,9 @@ async function loadData() {
   const startChecked   = isTrue(timerStartFlag);
   const resetChecked   = isTrue(timerResetFlag);
   const visibleChecked = isTrue(timerVisibleFlag);
+
+  const simpleViewFlag = rows[1]?.c[12]?.v; // M2
+  const simpleView = isTrue(simpleViewFlag);
 
   /* ===== RESET ===== */
   if (resetChecked && !lastResetState) {
@@ -476,9 +499,21 @@ async function loadData() {
   lastTotalBosses = globalTotalBosses;
 
   // ================================
+  // SIMPLE VIEW (nur Header anzeigen)
+  // ================================
+  if (simpleView) {
+    pinnedArea.style.display = "none";
+    content.style.display = "none";
+    wrapper.classList.add("simple-mode");
+    return;
+  } else {
+    content.style.display = "block";
+    wrapper.classList.remove("simple-mode");
+  }
+
+  // ================================
   // RENDER PINNED BOSSES
   // ================================
-  const pinnedArea = document.getElementById("pinned-area");
   pinnedArea.innerHTML = "";
   let hasPinned = false;
 
@@ -503,7 +538,6 @@ async function loadData() {
   // ================================
   // RENDER NORMAL AREAS
   // ================================
-  const content = document.getElementById("content");
   content.innerHTML = "";
 
   Object.entries(areas).forEach(([area, data]) => {
@@ -581,7 +615,7 @@ setInterval(loadData, 5000);
 
 /* ================= SMOOTH 60FPS SCROLL WITH END PAUSES ================= */
 
-const SCROLL_SPEED   = 0.4;   // pixels per frame (~36px/s at 60fps) — adjust to taste
+const SCROLL_SPEED   = 0.8;   // pixels per frame (~36px/s at 60fps) — adjust to taste
 const PAUSE_DURATION = 2500;  // ms to pause at each end
 
 let scrollPos     = 0;
@@ -647,4 +681,3 @@ requestAnimationFrame(smoothScroll);
 </script>
 </body>
 </html>
-
