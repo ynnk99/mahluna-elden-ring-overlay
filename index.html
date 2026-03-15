@@ -59,21 +59,17 @@ html, body {
   box-sizing: border-box;
 }
 
-/* ============================= */
-/* MINIMAL OVERLAY MODE          */
-/* ============================= */
-
 .wrapper.simple-mode {
   width: 300px;
   height: auto;
-  padding: 10px 12px;   /* vorher 20px → deutlich kompakter */
+  padding: 10px 12px;
 }
 
 .wrapper.simple-mode .header-stats {
   flex-direction: column;
-  gap: 6px;             /* Abstand zwischen Tode und Bosse */
+  gap: 6px;
   font-size: 20px;
-  margin-bottom: 3px;     /* entfernt zusätzlichen Abstand */
+  margin-bottom: 3px;
 }
 
 .wrapper.simple-mode #boss-timer {
@@ -333,14 +329,12 @@ const MAIN_BOSSES = [
 const SPREADSHEET_ID = "1r9BzZJYFrk4rQLlMn4ZPBBUuc8u_peqwThTi1UTCQcE";
 const URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=OBS_OVERLAY&tqx=out:json`;
 
-/* ================= TIMER ENGINE ================= */
+/* ================= TIMER ENGINE (Sheet-basiert) ================= */
 
-let timerRunning = false;
-let timerStart = 0;
-let elapsedAtStop = 0;
+let currentElapsed = 0;   // ms – wird von loadData() aktualisiert
+let timerStartTs   = 0;   // V1 aus Sheet (0 = gestoppt)
+let timerVisible   = false;
 let currentBossName = "Aktueller Boss";
-let timerVisible = false;
-let lastResetState = false;
 
 function updateTimerDisplay() {
   const timerElement = document.getElementById("boss-timer");
@@ -348,9 +342,10 @@ function updateTimerDisplay() {
 
   timerElement.style.display = timerVisible ? "block" : "none";
 
-  const diff = timerRunning
-    ? Math.floor((Date.now() - timerStart) / 1000)
-    : Math.floor(elapsedAtStop / 1000);
+  // Wenn Timer läuft (V1 > 0): live hochzählen ab dem Sheet-Timestamp
+  const diff = timerStartTs > 0
+    ? Math.floor((currentElapsed + (Date.now() - timerStartTs)) / 1000)
+    : Math.floor(currentElapsed / 1000);
 
   const hours   = String(Math.floor(diff / 3600)).padStart(2, "0");
   const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
@@ -375,39 +370,16 @@ async function loadData() {
   const baseGameFlag = isTrue(rows[0]?.c[15]?.v); // P1
   const dlcFlag      = isTrue(rows[1]?.c[15]?.v); // P2
 
-  const timerStartFlag   = rows[0]?.c[10]?.v;
-  const timerResetFlag   = rows[1]?.c[10]?.v;
-  const timerVisibleFlag = rows[0]?.c[12]?.v;
-
-  const startChecked   = isTrue(timerStartFlag);
-  const resetChecked   = isTrue(timerResetFlag);
-  const visibleChecked = isTrue(timerVisibleFlag);
+  // TIMER – aus Sheet V1 / V3
+  // V1 = rows[0].c[21] → Start-Timestamp (0 wenn gestoppt)
+  // V2 = rows[1].c[21] → akkumulierte ms (nur für Sheet-Anzeige, nicht für Overlay)
+  // V3 = rows[2].c[21] → reiner Offset vergangener Runs (Basis für Overlay)
+  timerStartTs   = Number(rows[0]?.c[21]?.v) || 0; // V1
+  currentElapsed = Number(rows[2]?.c[21]?.v) || 0; // V3 ← geändert von rows[1] auf rows[2]
+  timerVisible   = isTrue(rows[0]?.c[12]?.v);       // M1
 
   const simpleViewFlag = rows[1]?.c[12]?.v; // M2
   const simpleView = isTrue(simpleViewFlag);
-
-  /* ===== RESET ===== */
-  if (resetChecked && !lastResetState) {
-    timerStart    = Date.now();
-    elapsedAtStop = 0;
-    if (timerRunning) timerStart = Date.now();
-  }
-  lastResetState = resetChecked;
-
-  /* ===== START / STOP ===== */
-  if (startChecked) {
-    if (!timerRunning) {
-      timerStart   = Date.now() - elapsedAtStop;
-      timerRunning = true;
-    }
-  } else {
-    if (timerRunning) {
-      elapsedAtStop = Date.now() - timerStart;
-      timerRunning  = false;
-    }
-  }
-
-  timerVisible = visibleChecked;
 
   const areas = {};
   let globalTotalBosses = 0;
@@ -416,8 +388,8 @@ async function loadData() {
   // ================================
   // GESAMT TODE
   // ================================
-  const baseDeaths = Number(rows[1]?.c[9]?.v)   || 0; // J2  → index 1
-  const dlcDeaths  = Number(rows[168]?.c[9]?.v) || 0; // J171 → index 170
+  const baseDeaths = Number(rows[1]?.c[9]?.v)   || 0;
+  const dlcDeaths  = Number(rows[168]?.c[9]?.v) || 0;
 
   let globalDeaths = 0;
   if (baseGameFlag && dlcFlag) globalDeaths = baseDeaths + dlcDeaths;
@@ -426,35 +398,23 @@ async function loadData() {
 
   // ================================
   // BOSS ROWS
-  // Dynamic section detection by content:
-  //   Base game: all rows before "SHADOW OF THE ERDTREE DLC" separator
-  //   DLC:       all rows after the separator
   // ================================
-
-  // Find separator index once before the loop
   const separatorIndex = rows.findIndex(r => r.c[1]?.v?.trim() === "SHADOW OF THE ERDTREE DLC");
 
   rows.forEach((r, index) => {
     const area = r.c[0]?.v?.trim();
     const boss = r.c[1]?.v?.trim();
 
-    // Header & leere Zeilen ignorieren
     if (area === "Gebiet" && boss === "Boss") return;
     if (!area || !boss) return;
-
-    // Separator row itself → never render
     if (boss === "SHADOW OF THE ERDTREE DLC") return;
 
-    // Section = position relative to separator
     const isBaseGame = separatorIndex === -1 || index < separatorIndex;
     const isDLC      = separatorIndex !== -1  && index > separatorIndex;
 
-    if (isBaseGame && !baseGameFlag) return; // P1 = FALSE → skip base game rows
-    if (isDLC      && !dlcFlag)      return; // P2 = FALSE → skip DLC rows
+    if (isBaseGame && !baseGameFlag) return;
+    if (isDLC      && !dlcFlag)      return;
 
-    // ================================
-    // BOSS-LOGIK
-    // ================================
     const rawDone   = r.c[2]?.v;
     const done      = [true, "TRUE", "WAHR", 1].includes(rawDone);
     const rawPinned = r.c[4]?.v;
@@ -514,7 +474,7 @@ async function loadData() {
   lastTotalBosses = globalTotalBosses;
 
   // ================================
-  // SIMPLE VIEW (nur Header anzeigen)
+  // SIMPLE VIEW
   // ================================
   if (simpleView) {
     pinnedArea.style.display = "none";
@@ -630,8 +590,8 @@ setInterval(loadData, 5000);
 
 /* ================= SMOOTH 60FPS SCROLL WITH END PAUSES ================= */
 
-const SCROLL_SPEED   = 0.5;   // pixels per frame (~36px/s at 60fps) — adjust to taste
-const PAUSE_DURATION = 2500;  // ms to pause at each end
+const SCROLL_SPEED   = 0.5;
+const PAUSE_DURATION = 2500;
 
 let scrollPos     = 0;
 let scrollDir     = 1;
@@ -655,7 +615,6 @@ function smoothScroll(timestamp) {
   const delta = timestamp - lastTimestamp;
   lastTimestamp = timestamp;
 
-  // Still within a pause window — do nothing
   if (isPaused) {
     if (timestamp < pauseUntil) return;
     isPaused = false;
@@ -665,14 +624,10 @@ function smoothScroll(timestamp) {
   if (!el) return;
 
   const maxScroll = el.scrollHeight - el.clientHeight;
-
-  // If content fits without scrolling, nothing to do
   if (maxScroll <= 0) return;
 
-  // Advance position proportionally to elapsed time (frame-rate independent)
   scrollPos += scrollDir * SCROLL_SPEED * (delta / (1000 / 60));
 
-  // Hit the bottom
   if (scrollPos >= maxScroll) {
     scrollPos  = maxScroll;
     scrollDir  = -1;
@@ -680,7 +635,6 @@ function smoothScroll(timestamp) {
     pauseUntil = timestamp + PAUSE_DURATION;
   }
 
-  // Hit the top
   if (scrollPos <= 0) {
     scrollPos  = 0;
     scrollDir  = 1;
@@ -696,6 +650,3 @@ requestAnimationFrame(smoothScroll);
 </script>
 </body>
 </html>
-
-
-
