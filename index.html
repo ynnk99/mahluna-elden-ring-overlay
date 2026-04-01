@@ -367,18 +367,18 @@ async function loadData() {
 
   const isTrue = v => [true, "TRUE", "WAHR", 1].includes(v);
 
-  const baseGameFlag = isTrue(rows[0]?.c[15]?.v); // P1
-  const dlcFlag      = isTrue(rows[1]?.c[15]?.v); // P2
+  const baseGameFlag = isTrue(rows[0]?.c[16]?.v); // P1
+  const dlcFlag      = isTrue(rows[1]?.c[16]?.v); // P2
 
   // TIMER – aus Sheet V1 / V3
   // V1 = rows[0].c[21] → Start-Timestamp (0 wenn gestoppt)
   // V2 = rows[1].c[21] → akkumulierte ms (nur für Sheet-Anzeige, nicht für Overlay)
   // V3 = rows[2].c[21] → reiner Offset vergangener Runs (Basis für Overlay)
-  timerStartTs   = Number(rows[0]?.c[21]?.v) || 0; // V1
-  currentElapsed = Number(rows[2]?.c[21]?.v) || 0; // V3 ← geändert von rows[1] auf rows[2]
-  timerVisible   = isTrue(rows[0]?.c[12]?.v);       // M1
+  timerStartTs   = Number(rows[0]?.c[22]?.v) || 0; // V1
+  currentElapsed = Number(rows[2]?.c[22]?.v) || 0; // V3 ← geändert von rows[1] auf rows[2]
+  timerVisible   = isTrue(rows[0]?.c[13]?.v);       // M1
 
-  const simpleViewFlag = rows[1]?.c[12]?.v; // M2
+  const simpleViewFlag = rows[1]?.c[13]?.v; // M2
   const simpleView = isTrue(simpleViewFlag);
 
   const areas = {};
@@ -388,8 +388,8 @@ async function loadData() {
   // ================================
   // GESAMT TODE
   // ================================
-  const baseDeaths = Number(rows[1]?.c[9]?.v)   || 0;
-  const dlcDeaths  = Number(rows[168]?.c[9]?.v) || 0;
+  const baseDeaths = Number(rows[1]?.c[10]?.v)   || 0;
+  const dlcDeaths  = Number(rows[168]?.c[10]?.v) || 0;
 
   let globalDeaths = 0;
   if (baseGameFlag && dlcFlag) globalDeaths = baseDeaths + dlcDeaths;
@@ -417,9 +417,9 @@ async function loadData() {
 
     const rawDone   = r.c[2]?.v;
     const done      = [true, "TRUE", "WAHR", 1].includes(rawDone);
-    const rawPinned = r.c[4]?.v;
+    const rawPinned = r.c[5]?.v;
     const pinned    = [true, "TRUE", "WAHR", 1].includes(rawPinned);
-    const deaths    = Number(r.c[3]?.v) || 0;
+    const deaths    = Number(r.c[4]?.v) || 0;
     const key       = area + "|" + boss;
 
     if (!(key in previousBossStates)) {
@@ -437,7 +437,7 @@ async function loadData() {
     if (done) globalDoneBosses++;
 
     if (!areas[area]) {
-      const rawCollapsed = r.c[5]?.v;
+      const rawCollapsed = r.c[6]?.v;
       areas[area] = {
         total: 0,
         done: 0,
