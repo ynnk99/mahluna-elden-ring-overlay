@@ -389,7 +389,7 @@ async function loadData() {
   // GESAMT TODE
   // ================================
   const baseDeaths = Number(rows[1]?.c[10]?.v)   || 0;
-  const dlcDeaths  = Number(rows[166]?.c[10]?.v) || 0;
+  const dlcDeaths  = Number(rows[168]?.c[10]?.v) || 0;
 
   let globalDeaths = 0;
   if (baseGameFlag && dlcFlag) globalDeaths = baseDeaths + dlcDeaths;
