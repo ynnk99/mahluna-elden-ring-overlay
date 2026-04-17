@@ -367,19 +367,21 @@ async function loadData() {
 
   const isTrue = v => [true, "TRUE", "WAHR", 1].includes(v);
 
-  const baseGameFlag = isTrue(rows[0]?.c[16]?.v); // P1
-  const dlcFlag      = isTrue(rows[1]?.c[16]?.v); // P2
+  const baseGameFlag = isTrue(rows[0]?.c[16]?.v); // Q1
+  const dlcFlag      = isTrue(rows[1]?.c[16]?.v); // Q2
 
   // TIMER – aus Sheet V1 / V3
-  // V1 = rows[0].c[21] → Start-Timestamp (0 wenn gestoppt)
-  // V2 = rows[1].c[21] → akkumulierte ms (nur für Sheet-Anzeige, nicht für Overlay)
-  // V3 = rows[2].c[21] → reiner Offset vergangener Runs (Basis für Overlay)
   timerStartTs   = Number(rows[0]?.c[22]?.v) || 0; // V1
-  currentElapsed = Number(rows[2]?.c[22]?.v) || 0; // V3 ← geändert von rows[1] auf rows[2]
+  currentElapsed = Number(rows[2]?.c[22]?.v) || 0; // V3
   timerVisible   = isTrue(rows[0]?.c[13]?.v);       // M1
 
   const simpleViewFlag = rows[1]?.c[13]?.v; // M2
   const simpleView = isTrue(simpleViewFlag);
+
+  // S1: nur offene Bosse anzeigen | S2: nur erledigte Bosse anzeigen
+  // Spalte S = Index 18 (A=0, B=1, ... S=18)
+  const onlyOpen = isTrue(rows[0]?.c[18]?.v); // S1
+  const onlyDone = isTrue(rows[1]?.c[18]?.v); // S2
 
   const areas = {};
   let globalTotalBosses = 0;
@@ -487,6 +489,18 @@ async function loadData() {
   }
 
   // ================================
+  // BOSS-FILTER (S1 / S2)
+  // Wenn S1=TRUE → nur offene Bosse (done=false)
+  // Wenn S2=TRUE → nur erledigte Bosse (done=true)
+  // Beide FALSE (oder beide TRUE) → alle Bosse anzeigen
+  // ================================
+  function bossPassesFilter(b) {
+    if (onlyOpen && !onlyDone) return !b.done;
+    if (onlyDone && !onlyOpen) return b.done;
+    return true; // beide gleich → kein Filter
+  }
+
+  // ================================
   // RENDER PINNED BOSSES
   // ================================
   pinnedArea.innerHTML = "";
@@ -494,7 +508,9 @@ async function loadData() {
 
   const allPinned = [];
   Object.values(areas).forEach(areaData => {
-    areaData.bosses.forEach(b => { if (b.pinned) allPinned.push(b); });
+    areaData.bosses.forEach(b => {
+      if (b.pinned && bossPassesFilter(b)) allPinned.push(b);
+    });
   });
 
   if (allPinned.length > 0) {
@@ -516,6 +532,12 @@ async function loadData() {
   content.innerHTML = "";
 
   Object.entries(areas).forEach(([area, data]) => {
+    // Bosse nach Filter einschränken
+    const visibleBosses = data.bosses.filter(bossPassesFilter);
+
+    // Gebiet komplett überspringen wenn nach Filter nichts übrig bleibt
+    if (visibleBosses.length === 0) return;
+
     const areaDiv = document.createElement("div");
     areaDiv.className = "area";
 
@@ -525,7 +547,7 @@ async function loadData() {
     `;
 
     if (!data.collapsed) {
-      data.bosses.forEach(b => {
+      visibleBosses.forEach(b => {
         const bossDiv = document.createElement("div");
         const isMain = MAIN_BOSSES.includes(b.boss);
         bossDiv.className = "boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
