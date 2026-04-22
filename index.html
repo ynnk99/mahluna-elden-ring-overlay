@@ -336,16 +336,20 @@ let timerStartTs   = 0;   // V1 aus Sheet (0 = gestoppt)
 let timerVisible   = false;
 let currentBossName = "Aktueller Boss";
 
+let lastLoadTime = 0;
+
 function updateTimerDisplay() {
   const timerElement = document.getElementById("boss-timer");
   if (!timerElement) return;
 
   timerElement.style.display = timerVisible ? "block" : "none";
 
-  // Wenn Timer läuft (V1 > 0): live hochzählen ab dem Sheet-Timestamp
-  const diff = timerStartTs > 0
-    ? Math.floor((currentElapsed + (Date.now() - timerStartTs)) / 1000)
-    : Math.floor(currentElapsed / 1000);
+  // liveDelta: Zeit seit letztem Sheet-Reload, nur wenn Timer läuft
+  const liveDelta = (timerStartTs > 0 && lastLoadTime > 0)
+    ? (Date.now() - lastLoadTime)
+    : 0;
+
+  const diff = Math.floor((currentElapsed + liveDelta) / 1000);
 
   const hours   = String(Math.floor(diff / 3600)).padStart(2, "0");
   const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
@@ -371,9 +375,10 @@ async function loadData() {
   const dlcFlag      = isTrue(rows[1]?.c[16]?.v); // Q2
 
   // TIMER – aus Sheet V1 / V3
-  timerStartTs   = Number(rows[0]?.c[22]?.v) || 0; // V1
-  currentElapsed = Number(rows[2]?.c[22]?.v) || 0; // V3
+  timerStartTs   = Number(rows[0]?.c[22]?.v) || 0; // W1 – läuft (>0) oder nicht (0)
+  currentElapsed = Number(rows[1]?.c[22]?.v) || 0; // W2 – elapsed inkl. Offset aus W3
   timerVisible   = isTrue(rows[0]?.c[13]?.v);       // M1
+  lastLoadTime   = Date.now();
 
   const simpleViewFlag = rows[1]?.c[13]?.v; // M2
   const simpleView = isTrue(simpleViewFlag);
