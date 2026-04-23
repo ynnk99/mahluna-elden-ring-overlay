@@ -278,13 +278,14 @@ height: 28px;
   animation: none;
 }
 
-/* Tode-Zahl im Simple-Mode schmaler */
 .wrapper.simple-mode .pinned-boss .deaths {
   min-width: 30px;
   font-size: 16px;
   margin-right: 6px;
+  flex-shrink: 0;
 }
 
+/* Ticker-Container: overflow hidden, kein text-overflow */
 .wrapper.simple-mode .pinned-boss .boss-name {
   font-size: 16px;
   overflow: hidden;
@@ -294,21 +295,11 @@ height: 28px;
   text-overflow: clip;
 }
 
-.wrapper.simple-mode .pinned-boss .boss-name span {
+/* Innerer Span bewegt sich per translateX */
+.wrapper.simple-mode .pinned-boss .boss-name .ticker-inner {
   display: inline-block;
-  /* keine feste animation hier */
-}
-
-.wrapper.simple-mode .pinned-boss .boss-name span.scrolling {
-  animation: marquee 20s ease-in-out infinite;
-}
-
-@keyframes marquee {
-  0%   { transform: translateX(0px); }
-  15%  { transform: translateX(0px); }
-  50%  { transform: translateX(var(--scroll-distance)); }
-  65%  { transform: translateX(var(--scroll-distance)); }
-  100% { transform: translateX(0px); }
+  white-space: nowrap;
+  will-change: transform;
 }
 
 </style>
@@ -379,10 +370,6 @@ const URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sh
 
 /* ================= TIMER ENGINE ================= */
 
-// timerStartTs:   W1 (Zeile 0, Spalte W) – Unix-Timestamp (ms) des Timer-Starts, 0 = gestoppt
-// currentElapsed: W3 (Zeile 2, Spalte W) – Akkumulierte Zeit vor dem aktuellen Segment (ms)
-// timerVisible:   ob der Timer angezeigt werden soll
-
 let timerStartTs    = 0;
 let currentElapsed  = 0;
 let timerVisible    = false;
@@ -394,7 +381,6 @@ function updateTimerDisplay() {
 
   timerElement.style.display = timerVisible ? "block" : "none";
 
-  // Wenn Timer läuft (W1 > 0): currentElapsed + Zeit seit dem Start-Timestamp
   const diff = timerStartTs > 0
     ? Math.floor((currentElapsed + (Date.now() - timerStartTs)) / 1000)
     : Math.floor(currentElapsed / 1000);
@@ -419,30 +405,23 @@ async function loadData() {
 
   const isTrue = v => [true, "TRUE", "WAHR", 1].includes(v);
 
-  const baseGameFlag = isTrue(rows[0]?.c[16]?.v); // Q1
-  const dlcFlag      = isTrue(rows[1]?.c[16]?.v); // Q2
+  const baseGameFlag = isTrue(rows[0]?.c[16]?.v);
+  const dlcFlag      = isTrue(rows[1]?.c[16]?.v);
 
-  // ---- TIMER ----
-  // W1 (Index 22, Zeile 0): Unix-Timestamp (ms) des Timer-Starts, 0 = gestoppt
-  // W3 (Index 22, Zeile 2): Akkumulierte Zeit vor dem aktuellen Segment (ms)
   timerStartTs   = Number(rows[0]?.c[22]?.v) || 0;
   currentElapsed = Number(rows[2]?.c[22]?.v) || 0;
-  timerVisible   = isTrue(rows[0]?.c[13]?.v);  // M1
+  timerVisible   = isTrue(rows[0]?.c[13]?.v);
 
-  const simpleViewFlag = rows[1]?.c[13]?.v; // M2
+  const simpleViewFlag = rows[1]?.c[13]?.v;
   const simpleView = isTrue(simpleViewFlag);
 
-  // S1: nur offene Bosse anzeigen | S2: nur erledigte Bosse anzeigen
-  const onlyOpen = isTrue(rows[0]?.c[18]?.v); // S1
-  const onlyDone = isTrue(rows[1]?.c[18]?.v); // S2
+  const onlyOpen = isTrue(rows[0]?.c[18]?.v);
+  const onlyDone = isTrue(rows[1]?.c[18]?.v);
 
   const areas = {};
   let globalTotalBosses = 0;
   let globalDoneBosses = 0;
 
-  // ================================
-  // GESAMT TODE
-  // ================================
   const baseDeaths = Number(rows[1]?.c[10]?.v)   || 0;
   const dlcDeaths  = Number(rows[168]?.c[10]?.v) || 0;
 
@@ -451,9 +430,6 @@ async function loadData() {
   else if (baseGameFlag)       globalDeaths = baseDeaths;
   else if (dlcFlag)            globalDeaths = dlcDeaths;
 
-  // ================================
-  // BOSS ROWS
-  // ================================
   const separatorIndex = rows.findIndex(r => r.c[1]?.v?.trim() === "SHADOW OF THE ERDTREE DLC");
 
   rows.forEach((r, index) => {
@@ -568,43 +544,15 @@ async function loadData() {
       const normalize = str => str.trim().toLowerCase().replace(/\s+/g, " ");
       const isMain = MAIN_BOSSES.map(normalize).includes(normalize(b.boss));
       bossDiv.className = "boss pinned-boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
-      bossDiv.innerHTML = `<span class="deaths">📌 ${b.deaths}</span><span class="boss-name">${b.boss}</span>`;
+      // .ticker-inner ist der bewegliche innere Span
+      bossDiv.innerHTML = `<span class="deaths">📌 ${b.deaths}</span><span class="boss-name"><span class="ticker-inner">${b.boss}</span></span>`;
       pinnedArea.appendChild(bossDiv);
     });
+
+    // Ticker-State zurücksetzen wenn sich das DOM neu aufgebaut hat
+    tickerState = {};
   }
   pinnedArea.style.display = hasPinned ? "block" : "none";
-
-   // Ticker-Logik für Pinned-Boss-Namen
-  const tickerState = {};
-  
-  function runTickers() {
-    document.querySelectorAll('.wrapper.simple-mode .pinned-boss .boss-name').forEach(el => {
-      const id = el.dataset.tickerId || (el.dataset.tickerId = Math.random().toString(36).slice(2));
-      if (!tickerState[id]) {
-        tickerState[id] = { pos: 0, dir: 1, pause: 80 };
-      }
-      const s = tickerState[id];
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (maxScroll <= 0) return;
-  
-      if (s.pause > 0) { s.pause--; return; }
-  
-      s.pos += s.dir * 0.5;
-  
-      if (s.pos >= maxScroll) {
-        s.pos = maxScroll;
-        s.dir = -1;
-        s.pause = 80;
-      } else if (s.pos <= 0) {
-        s.pos = 0;
-        s.dir = 1;
-        s.pause = 80;
-      }
-      el.scrollLeft = s.pos;
-    });
-  }
-  
-  setInterval(runTickers, 16); // ~60fps
 
   // ================================
   // RENDER NORMAL AREAS
@@ -635,6 +583,63 @@ async function loadData() {
     content.appendChild(areaDiv);
   });
 }
+
+/* ================= TICKER ENGINE =================
+   Läuft einmal global bei ~60 fps.
+   Bewegt .ticker-inner per translateX innerhalb .boss-name.
+
+   Warum translateX statt scrollLeft?
+   - scrollLeft funktioniert auf overflow:hidden-Elementen
+     browserübergreifend unzuverlässig.
+   - inner.offsetWidth misst die echte Textbreite des Spans,
+     containerEl.clientWidth die sichtbare Box.
+   - maxScroll = inner.offsetWidth - containerEl.clientWidth
+     ist daher immer korrekt, egal wie lang der Name ist.
+================================================== */
+
+let tickerState = {};
+
+function runTickers() {
+  document.querySelectorAll('.wrapper.simple-mode .pinned-boss .boss-name').forEach(containerEl => {
+    const inner = containerEl.querySelector('.ticker-inner');
+    if (!inner) return;
+
+    if (!containerEl.dataset.tickerId) {
+      containerEl.dataset.tickerId = Math.random().toString(36).slice(2);
+    }
+    const id = containerEl.dataset.tickerId;
+
+    if (!tickerState[id]) {
+      tickerState[id] = { pos: 0, dir: 1, pause: 80 };
+    }
+    const s = tickerState[id];
+
+    const maxScroll = inner.offsetWidth - containerEl.clientWidth;
+    if (maxScroll <= 0) {
+      inner.style.transform = "translateX(0)";
+      return;
+    }
+
+    if (s.pause > 0) { s.pause--; return; }
+
+    s.pos += s.dir * 0.5;
+
+    if (s.pos >= maxScroll) {
+      s.pos = maxScroll;
+      s.dir = -1;
+      s.pause = 80;
+    } else if (s.pos <= 0) {
+      s.pos = 0;
+      s.dir = 1;
+      s.pause = 80;
+    }
+
+    inner.style.transform = `translateX(${-s.pos}px)`;
+  });
+}
+
+// Einmalig starten – kein doppeltes Interval durch loadData-Aufrufe
+setInterval(runTickers, 16);
 
 /* ================= VICTORY SYSTEM ================= */
 
