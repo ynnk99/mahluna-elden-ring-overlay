@@ -267,12 +267,30 @@ height: 28px;
 .wrapper.simple-mode .pinned-container {
   border-bottom: none;
   margin-bottom: 0;
-  padding-bottom: 4px;
+  padding-bottom: 0;
 }
 
 .wrapper.simple-mode .pinned-boss {
-  font-size: 16px;
+  font-size: 15px;
   padding: 3px 6px;
+  margin-bottom: 2px;
+}
+
+/* Tode-Zahl im Simple-Mode schmaler */
+.wrapper.simple-mode .pinned-boss .deaths {
+  min-width: 30px;
+  font-size: 13px;
+  margin-right: 6px;
+}
+
+/* Mehr Platz für den Bossnamen */
+.wrapper.simple-mode .pinned-boss .boss-name {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 </style>
