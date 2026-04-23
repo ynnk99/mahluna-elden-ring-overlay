@@ -263,6 +263,18 @@ height: 28px;
   0% { transform: translate(0,0) scale(1); opacity: 1; }
   100% { transform: translate(var(--x), var(--y)) scale(0.2); opacity: 0; }
 }
+
+.wrapper.simple-mode .pinned-container {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 4px;
+}
+
+.wrapper.simple-mode .pinned-boss {
+  font-size: 16px;
+  padding: 3px 6px;
+}
+
 </style>
 </head>
 
@@ -484,10 +496,8 @@ async function loadData() {
   // SIMPLE VIEW
   // ================================
   if (simpleView) {
-    pinnedArea.style.display = "none";
     content.style.display = "none";
     wrapper.classList.add("simple-mode");
-    return;
   } else {
     content.style.display = "block";
     wrapper.classList.remove("simple-mode");
