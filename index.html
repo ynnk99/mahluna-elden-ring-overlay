@@ -331,16 +331,14 @@ const URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sh
 
 /* ================= TIMER ENGINE ================= */
 
-// timerBaseElapsed: die vom Sheet gelesene elapsed-Zeit beim letzten sauberen Sync (ms)
-// timerBaseWall:    der lokale Date.now()-Zeitpunkt dieses Syncs
-// timerIsRunning:   ob der Timer laut Sheet gerade läuft
-// timerVisible:     ob der Timer angezeigt werden soll
+// timerStartTs:   W1 (Zeile 0, Spalte W) – Unix-Timestamp (ms) des Timer-Starts, 0 = gestoppt
+// currentElapsed: W3 (Zeile 2, Spalte W) – Akkumulierte Zeit vor dem aktuellen Segment (ms)
+// timerVisible:   ob der Timer angezeigt werden soll
 
-let timerBaseElapsed = 0;
-let timerBaseWall    = 0;
-let timerIsRunning   = false;
-let timerVisible     = false;
-let currentBossName  = "Aktueller Boss";
+let timerStartTs    = 0;
+let currentElapsed  = 0;
+let timerVisible    = false;
+let currentBossName = "Aktueller Boss";
 
 function updateTimerDisplay() {
   const timerElement = document.getElementById("boss-timer");
@@ -348,13 +346,10 @@ function updateTimerDisplay() {
 
   timerElement.style.display = timerVisible ? "block" : "none";
 
-  // Lokale Hochrechnung: Basis + Zeit seit dem letzten Sheet-Sync
-  const liveDelta = (timerIsRunning && timerBaseWall > 0)
-    ? (Date.now() - timerBaseWall)
-    : 0;
-
-  const totalMs = timerBaseElapsed + liveDelta;
-  const diff    = Math.floor(totalMs / 1000);
+  // Wenn Timer läuft (W1 > 0): currentElapsed + Zeit seit dem Start-Timestamp
+  const diff = timerStartTs > 0
+    ? Math.floor((currentElapsed + (Date.now() - timerStartTs)) / 1000)
+    : Math.floor(currentElapsed / 1000);
 
   const hours   = String(Math.floor(diff / 3600)).padStart(2, "0");
   const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
@@ -380,35 +375,11 @@ async function loadData() {
   const dlcFlag      = isTrue(rows[1]?.c[16]?.v); // Q2
 
   // ---- TIMER ----
-  // W1 (Index 22, Zeile 0): >0 = Timer läuft, 0 = gestoppt
-  // W2 (Index 22, Zeile 1): elapsed in ms (inkl. aller bisherigen Segmente)
-  const newIsRunning   = (Number(rows[0]?.c[22]?.v) || 0) > 0;
-  const newElapsedMs   = Number(rows[1]?.c[22]?.v) || 0;
-  timerVisible         = isTrue(rows[0]?.c[13]?.v);  // M1
-
-  if (newIsRunning) {
-    // Timer läuft laut Sheet.
-    // Wir aktualisieren die Basis NUR, wenn der Sheet-Wert größer ist als
-    // unsere lokale Hochrechnung → vermeidet Rücksprünge bei trägen Sheet-Updates.
-    const localNow = timerBaseElapsed + (timerBaseWall > 0 ? Date.now() - timerBaseWall : 0);
-
-    if (!timerIsRunning) {
-      // Timer wurde gerade gestartet (war vorher gestoppt)
-      timerBaseElapsed = newElapsedMs;
-      timerBaseWall    = Date.now();
-    } else if (newElapsedMs > localNow) {
-      // Sheet hat neuere / größere elapsed-Zeit → vorwärts synchronisieren
-      timerBaseElapsed = newElapsedMs;
-      timerBaseWall    = Date.now();
-    }
-    // Sonst: Sheet ist hinter unserer lokalen Zählung → ignorieren, lokal weiterlaufen
-  } else {
-    // Timer ist gestoppt – Sheet-Wert übernehmen und Basis einfrieren
-    timerBaseElapsed = newElapsedMs;
-    timerBaseWall    = 0;
-  }
-
-  timerIsRunning = newIsRunning;
+  // W1 (Index 22, Zeile 0): Unix-Timestamp (ms) des Timer-Starts, 0 = gestoppt
+  // W3 (Index 22, Zeile 2): Akkumulierte Zeit vor dem aktuellen Segment (ms)
+  timerStartTs   = Number(rows[0]?.c[22]?.v) || 0;
+  currentElapsed = Number(rows[2]?.c[22]?.v) || 0;
+  timerVisible   = isTrue(rows[0]?.c[13]?.v);  // M1
 
   const simpleViewFlag = rows[1]?.c[13]?.v; // M2
   const simpleView = isTrue(simpleViewFlag);
