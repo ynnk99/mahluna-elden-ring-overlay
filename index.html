@@ -329,14 +329,18 @@ const MAIN_BOSSES = [
 const SPREADSHEET_ID = "1r9BzZJYFrk4rQLlMn4ZPBBUuc8u_peqwThTi1UTCQcE";
 const URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=OBS_OVERLAY&tqx=out:json`;
 
-/* ================= TIMER ENGINE (Sheet-basiert) ================= */
+/* ================= TIMER ENGINE ================= */
 
-let currentElapsed = 0;   // ms – wird von loadData() aktualisiert
-let timerStartTs   = 0;   // V1 aus Sheet (0 = gestoppt)
-let timerVisible   = false;
-let currentBossName = "Aktueller Boss";
+// timerBaseElapsed: die vom Sheet gelesene elapsed-Zeit beim letzten sauberen Sync (ms)
+// timerBaseWall:    der lokale Date.now()-Zeitpunkt dieses Syncs
+// timerIsRunning:   ob der Timer laut Sheet gerade läuft
+// timerVisible:     ob der Timer angezeigt werden soll
 
-let lastLoadTime = 0;
+let timerBaseElapsed = 0;
+let timerBaseWall    = 0;
+let timerIsRunning   = false;
+let timerVisible     = false;
+let currentBossName  = "Aktueller Boss";
 
 function updateTimerDisplay() {
   const timerElement = document.getElementById("boss-timer");
@@ -344,12 +348,13 @@ function updateTimerDisplay() {
 
   timerElement.style.display = timerVisible ? "block" : "none";
 
-  // liveDelta: Zeit seit letztem Sheet-Reload, nur wenn Timer läuft
-  const liveDelta = (timerStartTs > 0 && lastLoadTime > 0)
-    ? (Date.now() - lastLoadTime)
+  // Lokale Hochrechnung: Basis + Zeit seit dem letzten Sheet-Sync
+  const liveDelta = (timerIsRunning && timerBaseWall > 0)
+    ? (Date.now() - timerBaseWall)
     : 0;
 
-  const diff = Math.floor((currentElapsed + liveDelta) / 1000);
+  const totalMs = timerBaseElapsed + liveDelta;
+  const diff    = Math.floor(totalMs / 1000);
 
   const hours   = String(Math.floor(diff / 3600)).padStart(2, "0");
   const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
@@ -374,17 +379,41 @@ async function loadData() {
   const baseGameFlag = isTrue(rows[0]?.c[16]?.v); // Q1
   const dlcFlag      = isTrue(rows[1]?.c[16]?.v); // Q2
 
-  // TIMER – aus Sheet V1 / V3
-  timerStartTs   = Number(rows[0]?.c[22]?.v) || 0; // W1 – läuft (>0) oder nicht (0)
-  currentElapsed = Number(rows[1]?.c[22]?.v) || 0; // W2 – elapsed inkl. Offset aus W3
-  timerVisible   = isTrue(rows[0]?.c[13]?.v);       // M1
-  lastLoadTime   = Date.now();
+  // ---- TIMER ----
+  // W1 (Index 22, Zeile 0): >0 = Timer läuft, 0 = gestoppt
+  // W2 (Index 22, Zeile 1): elapsed in ms (inkl. aller bisherigen Segmente)
+  const newIsRunning   = (Number(rows[0]?.c[22]?.v) || 0) > 0;
+  const newElapsedMs   = Number(rows[1]?.c[22]?.v) || 0;
+  timerVisible         = isTrue(rows[0]?.c[13]?.v);  // M1
+
+  if (newIsRunning) {
+    // Timer läuft laut Sheet.
+    // Wir aktualisieren die Basis NUR, wenn der Sheet-Wert größer ist als
+    // unsere lokale Hochrechnung → vermeidet Rücksprünge bei trägen Sheet-Updates.
+    const localNow = timerBaseElapsed + (timerBaseWall > 0 ? Date.now() - timerBaseWall : 0);
+
+    if (!timerIsRunning) {
+      // Timer wurde gerade gestartet (war vorher gestoppt)
+      timerBaseElapsed = newElapsedMs;
+      timerBaseWall    = Date.now();
+    } else if (newElapsedMs > localNow) {
+      // Sheet hat neuere / größere elapsed-Zeit → vorwärts synchronisieren
+      timerBaseElapsed = newElapsedMs;
+      timerBaseWall    = Date.now();
+    }
+    // Sonst: Sheet ist hinter unserer lokalen Zählung → ignorieren, lokal weiterlaufen
+  } else {
+    // Timer ist gestoppt – Sheet-Wert übernehmen und Basis einfrieren
+    timerBaseElapsed = newElapsedMs;
+    timerBaseWall    = 0;
+  }
+
+  timerIsRunning = newIsRunning;
 
   const simpleViewFlag = rows[1]?.c[13]?.v; // M2
   const simpleView = isTrue(simpleViewFlag);
 
   // S1: nur offene Bosse anzeigen | S2: nur erledigte Bosse anzeigen
-  // Spalte S = Index 18 (A=0, B=1, ... S=18)
   const onlyOpen = isTrue(rows[0]?.c[18]?.v); // S1
   const onlyDone = isTrue(rows[1]?.c[18]?.v); // S2
 
@@ -495,14 +524,11 @@ async function loadData() {
 
   // ================================
   // BOSS-FILTER (S1 / S2)
-  // Wenn S1=TRUE → nur offene Bosse (done=false)
-  // Wenn S2=TRUE → nur erledigte Bosse (done=true)
-  // Beide FALSE (oder beide TRUE) → alle Bosse anzeigen
   // ================================
   function bossPassesFilter(b) {
     if (onlyOpen && !onlyDone) return !b.done;
     if (onlyDone && !onlyOpen) return b.done;
-    return true; // beide gleich → kein Filter
+    return true;
   }
 
   // ================================
@@ -537,10 +563,7 @@ async function loadData() {
   content.innerHTML = "";
 
   Object.entries(areas).forEach(([area, data]) => {
-    // Bosse nach Filter einschränken
     const visibleBosses = data.bosses.filter(bossPassesFilter);
-
-    // Gebiet komplett überspringen wenn nach Filter nichts übrig bleibt
     if (visibleBosses.length === 0) return;
 
     const areaDiv = document.createElement("div");
