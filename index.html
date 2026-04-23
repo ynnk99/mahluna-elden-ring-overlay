@@ -266,31 +266,49 @@ height: 28px;
 
 .wrapper.simple-mode .pinned-container {
   border-bottom: none;
+  margin-top: 8px;
   margin-bottom: 0;
   padding-bottom: 0;
 }
 
 .wrapper.simple-mode .pinned-boss {
-  font-size: 15px;
+  font-size: 16px;
   padding: 3px 6px;
   margin-bottom: 2px;
+  animation: none;
 }
 
 /* Tode-Zahl im Simple-Mode schmaler */
 .wrapper.simple-mode .pinned-boss .deaths {
   min-width: 30px;
-  font-size: 13px;
+  font-size: 16px;
   margin-right: 6px;
 }
 
-/* Mehr Platz für den Bossnamen */
 .wrapper.simple-mode .pinned-boss .boss-name {
-  font-size: 15px;
+  font-size: 16px;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
   min-width: 0;
+  text-overflow: clip;
+}
+
+.wrapper.simple-mode .pinned-boss .boss-name span {
+  display: inline-block;
+  /* keine feste animation hier */
+}
+
+.wrapper.simple-mode .pinned-boss .boss-name span.scrolling {
+  animation: marquee 20s ease-in-out infinite;
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(0px); }
+  15%  { transform: translateX(0px); }
+  50%  { transform: translateX(var(--scroll-distance)); }
+  65%  { transform: translateX(var(--scroll-distance)); }
+  100% { transform: translateX(0px); }
 }
 
 </style>
@@ -555,6 +573,38 @@ async function loadData() {
     });
   }
   pinnedArea.style.display = hasPinned ? "block" : "none";
+
+   // Ticker-Logik für Pinned-Boss-Namen
+  const tickerState = {};
+  
+  function runTickers() {
+    document.querySelectorAll('.wrapper.simple-mode .pinned-boss .boss-name').forEach(el => {
+      const id = el.dataset.tickerId || (el.dataset.tickerId = Math.random().toString(36).slice(2));
+      if (!tickerState[id]) {
+        tickerState[id] = { pos: 0, dir: 1, pause: 80 };
+      }
+      const s = tickerState[id];
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (maxScroll <= 0) return;
+  
+      if (s.pause > 0) { s.pause--; return; }
+  
+      s.pos += s.dir * 0.5;
+  
+      if (s.pos >= maxScroll) {
+        s.pos = maxScroll;
+        s.dir = -1;
+        s.pause = 80;
+      } else if (s.pos <= 0) {
+        s.pos = 0;
+        s.dir = 1;
+        s.pause = 80;
+      }
+      el.scrollLeft = s.pos;
+    });
+  }
+  
+  setInterval(runTickers, 16); // ~60fps
 
   // ================================
   // RENDER NORMAL AREAS
