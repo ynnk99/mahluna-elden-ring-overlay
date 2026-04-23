@@ -549,8 +549,8 @@ async function loadData() {
       pinnedArea.appendChild(bossDiv);
     });
 
-    // Ticker-State zurücksetzen wenn sich das DOM neu aufgebaut hat
-    tickerState = {};
+    // tickerState NICHT resetten – State ist an den Boss-Namen gekoppelt
+    // und überlebt so den DOM-Rebuild alle 5 Sekunden
   }
   pinnedArea.style.display = hasPinned ? "block" : "none";
 
@@ -604,17 +604,22 @@ function runTickers() {
     const inner = containerEl.querySelector('.ticker-inner');
     if (!inner) return;
 
-    if (!containerEl.dataset.tickerId) {
-      containerEl.dataset.tickerId = Math.random().toString(36).slice(2);
-    }
-    const id = containerEl.dataset.tickerId;
+    // State am Boss-Namen festmachen, nicht an der DOM-Element-ID.
+    // So bleibt die Scroll-Position erhalten, wenn loadData() alle 5s
+    // das DOM neu aufbaut.
+    const key = inner.textContent.trim();
 
-    if (!tickerState[id]) {
-      tickerState[id] = { pos: 0, dir: 1, pause: 80 };
+    if (!tickerState[key]) {
+      tickerState[key] = { pos: 0, dir: 1, pause: 80 };
     }
-    const s = tickerState[id];
+    const s = tickerState[key];
 
-    const maxScroll = inner.offsetWidth - containerEl.clientWidth;
+    // getBoundingClientRect() erzwingt Layout-Neuberechnung →
+    // zuverlässigere Messung als offsetWidth nach DOM-Rebuild
+    const innerW     = inner.getBoundingClientRect().width;
+    const containerW = containerEl.getBoundingClientRect().width;
+    const maxScroll  = innerW - containerW;
+
     if (maxScroll <= 0) {
       inner.style.transform = "translateX(0)";
       return;
