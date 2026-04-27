@@ -410,6 +410,10 @@ async function loadData() {
 
   const isTrue = v => [true, "TRUE", "WAHR", 1].includes(v);
 
+  const hideOverlay = isTrue(rows[0]?.c[24]?.v);
+  document.querySelector(".wrapper").style.visibility = hideOverlay ? "hidden" : "visible";
+  if (hideOverlay) return;
+
   const baseGameFlag = isTrue(rows[0]?.c[16]?.v);
   const dlcFlag      = isTrue(rows[1]?.c[16]?.v);
 
