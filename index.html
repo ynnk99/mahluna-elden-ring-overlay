@@ -170,6 +170,21 @@ height: 28px;
   animation: pinnedPulse 2.5s ease-in-out infinite;
 }
 
+/* Ticker: gilt für pinned bosses in BEIDEN Modi */
+.pinned-boss .boss-name {
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  text-overflow: clip; /* kein "…" – der Ticker übernimmt das Scrollen */
+}
+
+.pinned-boss .boss-name .ticker-inner {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+}
+
 .header-stats {
   font-size: 18px;
   margin-bottom: 10px;
@@ -290,21 +305,8 @@ height: 28px;
   flex-shrink: 0;
 }
 
-/* Ticker-Container: overflow hidden, kein text-overflow */
 .wrapper.simple-mode .pinned-boss .boss-name {
   font-size: 16px;
-  overflow: hidden;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-  text-overflow: clip;
-}
-
-/* Innerer Span bewegt sich per translateX */
-.wrapper.simple-mode .pinned-boss .boss-name .ticker-inner {
-  display: inline-block;
-  white-space: nowrap;
-  will-change: transform;
 }
 
 </style>
@@ -553,13 +555,9 @@ async function loadData() {
       const normalize = str => str.trim().toLowerCase().replace(/\s+/g, " ");
       const isMain = MAIN_BOSSES.map(normalize).includes(normalize(b.boss));
       bossDiv.className = "boss pinned-boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
-      // .ticker-inner ist der bewegliche innere Span
       bossDiv.innerHTML = `<span class="deaths">📌 ${b.deaths}</span><span class="boss-name"><span class="ticker-inner">${b.boss}</span></span>`;
       pinnedArea.appendChild(bossDiv);
     });
-
-    // tickerState NICHT resetten – State ist an den Boss-Namen gekoppelt
-    // und überlebt so den DOM-Rebuild alle 5 Sekunden
   }
   pinnedArea.style.display = hasPinned ? "block" : "none";
 
@@ -595,27 +593,18 @@ async function loadData() {
 
 /* ================= TICKER ENGINE =================
    Läuft einmal global bei ~60 fps.
-   Bewegt .ticker-inner per translateX innerhalb .boss-name.
-
-   Warum translateX statt scrollLeft?
-   - scrollLeft funktioniert auf overflow:hidden-Elementen
-     browserübergreifend unzuverlässig.
-   - inner.offsetWidth misst die echte Textbreite des Spans,
-     containerEl.clientWidth die sichtbare Box.
-   - maxScroll = inner.offsetWidth - containerEl.clientWidth
-     ist daher immer korrekt, egal wie lang der Name ist.
+   Gilt für .pinned-boss .boss-name in BEIDEN Modi
+   (simple-mode und normal).
 ================================================== */
 
 let tickerState = {};
 
 function runTickers() {
+  // Selektor ohne .simple-mode – greift in beiden Modi
   document.querySelectorAll('.pinned-boss .boss-name').forEach(containerEl => {
     const inner = containerEl.querySelector('.ticker-inner');
     if (!inner) return;
 
-    // State am Boss-Namen festmachen, nicht an der DOM-Element-ID.
-    // So bleibt die Scroll-Position erhalten, wenn loadData() alle 5s
-    // das DOM neu aufbaut.
     const key = inner.textContent.trim();
 
     if (!tickerState[key]) {
@@ -623,8 +612,6 @@ function runTickers() {
     }
     const s = tickerState[key];
 
-    // getBoundingClientRect() erzwingt Layout-Neuberechnung →
-    // zuverlässigere Messung als offsetWidth nach DOM-Rebuild
     const innerW     = inner.getBoundingClientRect().width;
     const containerW = containerEl.getBoundingClientRect().width;
     const maxScroll  = innerW - containerW;
@@ -652,7 +639,6 @@ function runTickers() {
   });
 }
 
-// Einmalig starten – kein doppeltes Interval durch loadData-Aufrufe
 setInterval(runTickers, 16);
 
 /* ================= VICTORY SYSTEM ================= */
