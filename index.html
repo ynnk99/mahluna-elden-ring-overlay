@@ -609,7 +609,7 @@ async function loadData() {
 let tickerState = {};
 
 function runTickers() {
-  document.querySelectorAll('.wrapper.simple-mode .pinned-boss .boss-name').forEach(containerEl => {
+  document.querySelectorAll('.pinned-boss .boss-name').forEach(containerEl => {
     const inner = containerEl.querySelector('.ticker-inner');
     if (!inner) return;
 
