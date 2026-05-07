@@ -20,11 +20,15 @@ html, body {
 .wrapper {
   position: relative;
   width: 420px;
-  height: 560px;
-  padding: 18px;
+  /* ── Dynamische Höhe: wächst mit dem Inhalt, max. 560 px ── */
+  height: auto;
+  max-height: 560px;
+  display: flex;
+  flex-direction: column;
+  /* ─────────────────────────────────────────────────────── */
+  padding: 20px;
   box-sizing: border-box;
   overflow: hidden;
-  padding: 20px;
 
   background: linear-gradient(
     rgba(0, 0, 0, 0.75),
@@ -86,9 +90,11 @@ html, body {
   text-overflow: ellipsis;
 }
 
+/* ── Scroll-Bereich füllt den verbleibenden Platz im Flex-Container ── */
 .scroll {
-  height: 480px;
   overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .scroll::-webkit-scrollbar {
@@ -160,6 +166,7 @@ height: 28px;
   border-bottom: 2px solid #7d6a3d;
   margin-bottom: 15px;
   padding-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .pinned-boss {
@@ -191,6 +198,11 @@ height: 28px;
   color: #c9a44a;
   display: flex;
   gap: 20px;
+  flex-shrink: 0;
+}
+
+#boss-timer {
+  flex-shrink: 0;
 }
 
 @keyframes deathPulse {
@@ -223,11 +235,13 @@ height: 28px;
 
 .victory-overlay {
   position: absolute;
-  width: 420px;
-  height: 560px;
-  background: radial-gradient(circle, rgba(201,164,74,0.3), rgba(0,0,0,0.9));
+  /* ── 100 % statt fixer px-Werte, passt sich der Wrapper-Größe an ── */
+  width: 100%;
+  height: 100%;
+  /* ────────────────────────────────────────────────────────────────── */
   top: 0;
   left: 0;
+  background: radial-gradient(circle, rgba(201,164,74,0.3), rgba(0,0,0,0.9));
   display: flex;
   justify-content: center;
   align-items: center;
