@@ -452,7 +452,7 @@ const PARTICLE_COUNT = 50;
 
 let previousBossStates = {};
 let autoScrollPaused = false;
-let topDeathsModeActive = false;  // ← Y2-Flag
+let topDeathsModeActive = false;
 
 let lastGlobalDeaths = 0;
 let lastDoneBosses = 0;
@@ -559,9 +559,9 @@ function renderTopDeaths(allBosses) {
 /* ================= DATA LOAD ================= */
 
 async function loadData() {
-  const pinnedArea = document.getElementById("pinned-area");
-  const content    = document.getElementById("content");
-  const wrapper    = document.querySelector(".wrapper");
+  const pinnedArea   = document.getElementById("pinned-area");
+  const content      = document.getElementById("content");
+  const wrapper      = document.querySelector(".wrapper");
   const topContainer = document.getElementById("top-deaths-container");
 
   const res  = await fetch(URL + "&t=" + Date.now());
@@ -571,38 +571,56 @@ async function loadData() {
 
   const isTrue = v => [true, "TRUE", "WAHR", 1].includes(v);
 
-  const hideOverlay = isTrue(rows[0]?.c[24]?.v);
+  // ── ALLE FIXEN SHEET-ZELLREFERENZEN ─────────────────────────────────
+  const CELLS = {
+    hideOverlay:    rows[0]?.c[24]?.v,
+    topDeathsMode:  rows[1]?.c[24]?.v,
+
+    baseGameFlag:   rows[0]?.c[16]?.v,
+    dlcFlag:        rows[1]?.c[16]?.v,
+
+    timerVisible:   rows[0]?.c[13]?.v,
+    simpleView:     rows[1]?.c[13]?.v,
+
+    onlyOpen:       rows[0]?.c[18]?.v,
+    onlyDone:       rows[1]?.c[18]?.v,
+
+    timerStartTs:   rows[0]?.c[22]?.v,
+    currentElapsed: rows[2]?.c[22]?.v,
+
+    baseDeaths:     rows[1]?.c[10]?.v,
+    dlcDeaths:      rows[168]?.c[10]?.v,
+  };
+  // ────────────────────────────────────────────────────────────────────
+
+  const hideOverlay = isTrue(CELLS.hideOverlay);
   document.querySelector(".wrapper").style.visibility = hideOverlay ? "hidden" : "visible";
   if (hideOverlay) return;
 
-  // ── Y2: Top-Deaths-Modus ──────────────────────────────────────────────
-  topDeathsModeActive = isTrue(rows[1]?.c[24]?.v);
-  // ─────────────────────────────────────────────────────────────────────
+  topDeathsModeActive = isTrue(CELLS.topDeathsMode);
 
-  const baseGameFlag = isTrue(rows[0]?.c[16]?.v);
-  const dlcFlag      = isTrue(rows[1]?.c[16]?.v);
+  const baseGameFlag = isTrue(CELLS.baseGameFlag);
+  const dlcFlag      = isTrue(CELLS.dlcFlag);
 
-  timerStartTs   = Number(rows[0]?.c[22]?.v) || 0;
-  currentElapsed = Number(rows[2]?.c[22]?.v) || 0;
-  timerVisible   = isTrue(rows[0]?.c[13]?.v);
+  timerStartTs   = Number(CELLS.timerStartTs)   || 0;
+  currentElapsed = Number(CELLS.currentElapsed) || 0;
+  timerVisible   = isTrue(CELLS.timerVisible);
 
-  const simpleViewFlag = rows[1]?.c[13]?.v;
-  const simpleView = isTrue(simpleViewFlag);
+  const simpleView = isTrue(CELLS.simpleView);
+  const onlyOpen   = isTrue(CELLS.onlyOpen);
+  const onlyDone   = isTrue(CELLS.onlyDone);
 
-  const onlyOpen = isTrue(rows[0]?.c[18]?.v);
-  const onlyDone = isTrue(rows[1]?.c[18]?.v);
-
-  const areas = {};
-  let globalTotalBosses = 0;
-  let globalDoneBosses = 0;
-
-  const baseDeaths = Number(rows[1]?.c[10]?.v)   || 0;
-  const dlcDeaths  = Number(rows[168]?.c[10]?.v) || 0;
+  const baseDeaths = Number(CELLS.baseDeaths) || 0;
+  const dlcDeaths  = Number(CELLS.dlcDeaths)  || 0;
 
   let globalDeaths = 0;
   if (baseGameFlag && dlcFlag) globalDeaths = baseDeaths + dlcDeaths;
   else if (baseGameFlag)       globalDeaths = baseDeaths;
   else if (dlcFlag)            globalDeaths = dlcDeaths;
+
+  const areas = {};
+  let globalTotalBosses = 0;
+  let globalDoneBosses = 0;
 
   const separatorIndex = rows.findIndex(r => r.c[1]?.v?.trim() === "SHADOW OF THE ERDTREE DLC");
 
@@ -692,7 +710,7 @@ async function loadData() {
     pinnedArea.style.display = "none";
     wrapper.classList.remove("simple-mode");
     renderTopDeaths(allBossesFlat);
-    return; // Normales Rendering überspringen
+    return;
   }
 
   // Normalmodus: Top-Deaths-Panel verstecken
@@ -884,7 +902,6 @@ let lastTimestamp = null;
 function smoothScroll(timestamp) {
   requestAnimationFrame(smoothScroll);
 
-  // Scroll pausieren wenn Top-Deaths-Modus oder Victory aktiv
   if (autoScrollPaused || topDeathsModeActive) {
     lastTimestamp = null;
     return;
