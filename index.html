@@ -756,7 +756,7 @@ async function loadData() {
       const normalize = str => str.trim().toLowerCase().replace(/\s+/g, " ");
       const isMain = MAIN_BOSSES.map(normalize).includes(normalize(b.boss));
       bossDiv.className = "boss pinned-boss" + (b.done ? " done" : "") + (isMain ? " main-boss" : "");
-      bossDiv.innerHTML = `<span class="deaths">📌 ${b.deaths}</span><span class="boss-name"><span class="ticker-inner">${b.boss}</span></span>`;
+      bossDiv.innerHTML = `<span class="deaths">💀 ${b.deaths}</span><span class="boss-name"><span class="ticker-inner">${b.boss}</span></span>`;
       pinnedArea.appendChild(bossDiv);
     });
   }
