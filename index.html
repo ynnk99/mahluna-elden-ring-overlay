@@ -494,7 +494,7 @@ const URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sh
 let timerStartTs    = 0;
 let currentElapsed  = 0;
 let timerVisible    = false;
-let currentBossName = "Aktueller Boss";
+let currentBossName = "Aktueller Boss"; // M3: wird überschrieben wenn befüllt
 
 function updateTimerDisplay() {
   const timerElement = document.getElementById("boss-timer");
@@ -588,6 +588,10 @@ async function loadData() {
     timerStartTs:   rows[0]?.c[22]?.v,
     currentElapsed: rows[2]?.c[22]?.v,
 
+    // M3 (Spalte M = Index 12, Zeile 3 = Index 2):
+    // Wenn befüllt, ersetzt "Aktueller Boss:" im Timer-Label
+    timerLabel:     rows[2]?.c[12]?.v,
+
     baseDeaths:     rows[1]?.c[10]?.v,
     dlcDeaths:      rows[168]?.c[10]?.v,
   };
@@ -605,6 +609,10 @@ async function loadData() {
   timerStartTs   = Number(CELLS.timerStartTs)   || 0;
   currentElapsed = Number(CELLS.currentElapsed) || 0;
   timerVisible   = isTrue(CELLS.timerVisible);
+
+  // M3: Custom Label – wenn leer, Standard "Aktueller Boss:" verwenden
+  const rawLabel = CELLS.timerLabel ? String(CELLS.timerLabel).trim() : "";
+  currentBossName = rawLabel || "Aktueller Boss";
 
   const simpleView = isTrue(CELLS.simpleView);
   const onlyOpen   = isTrue(CELLS.onlyOpen);
