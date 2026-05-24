@@ -573,27 +573,21 @@ async function loadData() {
 
   // ── ALLE FIXEN SHEET-ZELLREFERENZEN ─────────────────────────────────
   const CELLS = {
-    hideOverlay:    rows[0]?.c[24]?.v,
-    topDeathsMode:  rows[1]?.c[24]?.v,
-
-    baseGameFlag:   rows[0]?.c[16]?.v,
-    dlcFlag:        rows[1]?.c[16]?.v,
-
-    timerVisible:   rows[0]?.c[13]?.v,
-    simpleView:     rows[1]?.c[13]?.v,
-
-    onlyOpen:       rows[0]?.c[18]?.v,
-    onlyDone:       rows[1]?.c[18]?.v,
-
-    timerStartTs:   rows[0]?.c[22]?.v,
-    currentElapsed: rows[2]?.c[22]?.v,
-
-    // M3 (Spalte M = Index 12, Zeile 3 = Index 2):
+    hideOverlay:    rows[0]?.c[25]?.v,   // war c[24] (Y→Z)
+    topDeathsMode:  rows[1]?.c[25]?.v,   // war c[24] (Y→Z)
+    baseGameFlag:   rows[0]?.c[17]?.v,   // war c[16] (Q→R)
+    dlcFlag:        rows[1]?.c[17]?.v,   // war c[16] (Q→R)
+    timerVisible:   rows[0]?.c[14]?.v,   // war c[13] (N→O)
+    simpleView:     rows[1]?.c[14]?.v,   // war c[13] (N→O)
+    onlyOpen:       rows[0]?.c[19]?.v,   // war c[18] (S→T)
+    onlyDone:       rows[1]?.c[19]?.v,   // war c[18] (S→T)
+    timerStartTs:   rows[0]?.c[23]?.v,   // war c[22] (W→X)
+    currentElapsed: rows[2]?.c[23]?.v,   // war c[22] (W→X)
+    // N3 (Spalte N = Index 13, Zeile 3 = Index 2):
     // Wenn befüllt, ersetzt "Aktueller Boss:" im Timer-Label
-    timerLabel:     rows[2]?.c[12]?.v,
-
-    baseDeaths:     rows[1]?.c[10]?.v,
-    dlcDeaths:      rows[168]?.c[10]?.v,
+    timerLabel:     rows[2]?.c[13]?.v,   // war c[12] (M→N)
+    baseDeaths:     rows[1]?.c[11]?.v,   // war c[10] (K→L)
+    dlcDeaths:      rows[168]?.c[11]?.v, // war c[10] (K→L)
   };
   // ────────────────────────────────────────────────────────────────────
 
