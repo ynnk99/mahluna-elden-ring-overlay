@@ -280,8 +280,12 @@ height: 14px;
   font-weight: bold;
 }
 
+/* Im Top-Deaths-Ranking werden Bossnamen IMMER mit voller Opacity angezeigt,
+   auch wenn der Boss bereits erledigt ist. Die is-done Klasse bleibt im Markup
+   (z.B. falls spaeter wieder eine andere Behandlung gewuenscht ist), hat hier
+   aber bewusst keinen Effekt mehr. */
 .top-boss-name.is-done {
-  opacity: 0.5;
+  opacity: 1;
 }
 
 .top-deaths-bar-wrap {
