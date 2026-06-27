@@ -304,91 +304,6 @@ height: 14px;
 }
 /* ────────────────── */
 
-/* ── MALENIA MODE ── */
-#malenia-container {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 10px 0;
-}
-
-.malenia-title {
-  font-size: 19px;
-  letter-spacing: 2px;
-  color: #ff4d4d;
-  text-shadow: 0 0 12px rgba(255, 60, 60, 0.65), 0 0 24px rgba(120, 0, 0, 0.5);
-  margin-bottom: 4px;
-  line-height: 1.3;
-}
-
-.malenia-subtitle {
-  font-size: 12px;
-  letter-spacing: 3px;
-  color: #c97a7a;
-  opacity: 0.8;
-  margin-bottom: 18px;
-  text-transform: uppercase;
-}
-
-.malenia-title::after {
-  content: "";
-  display: block;
-  width: 70%;
-  margin: 8px auto 0;
-  height: 1px;
-  background: linear-gradient(to right, transparent, #8a2c2c, transparent);
-}
-
-.malenia-death-count {
-  font-size: 72px;
-  font-weight: bold;
-  color: #ff5a5a;
-  text-shadow:
-    0 0 20px rgba(255, 40, 40, 0.6),
-    0 0 45px rgba(120, 0, 0, 0.55);
-  line-height: 1;
-}
-
-.malenia-death-label {
-  font-size: 14px;
-  letter-spacing: 4px;
-  color: #c97a7a;
-  margin-top: 10px;
-  text-transform: uppercase;
-}
-
-@keyframes maleniaDeathPulse {
-  0%   { transform: scale(1); }
-  30%  { transform: scale(1.2); color: #ff8a8a; }
-  60%  { transform: scale(0.95); }
-  100% { transform: scale(1); }
-}
-
-.malenia-death-animate {
-  animation: maleniaDeathPulse 0.8s ease-out;
-}
-
-.wrapper.malenia-mode {
-  box-shadow:
-    0 0 25px rgba(0, 0, 0, 0.6),
-    0 0 14px rgba(180, 40, 40, 0.45);
-}
-
-.wrapper.malenia-mode::before {
-  box-shadow:
-    inset 0 0 30px rgba(180, 40, 40, 0.18),
-    inset 0 0 60px rgba(0, 0, 0, 0.7);
-}
-
-.wrapper.malenia-mode::after {
-  border-color: #8a2c2c;
-}
-/* ────────────────── */
-
 @keyframes deathPulse {
   0%   { transform: scale(1); }
   30%  { transform: scale(1.25); color: #e05a4f; }
@@ -529,14 +444,6 @@ height: 14px;
     <ul class="top-deaths-list" id="top-deaths-list"></ul>
   </div>
 
-  <!-- MALENIA PANEL (AB1 = TRUE) -->
-  <div id="malenia-container" style="display:none;">
-    <div class="malenia-title">MALENIA, KLINGE VON MIQUELLA</div>
-    <div class="malenia-subtitle">Klinge des Miquella</div>
-    <div class="malenia-death-count" id="malenia-death-count">0</div>
-    <div class="malenia-death-label">Tode</div>
-  </div>
-
   <div class="victory-overlay" id="victoryOverlay">
     <div class="victory-text" id="victoryText">BOSS ERLEDIGT</div>
   </div>
@@ -550,12 +457,10 @@ const PARTICLE_COUNT = 50;
 let previousBossStates = {};
 let autoScrollPaused = false;
 let topDeathsModeActive = false;
-let maleniaModeActive = false;
 
 let lastGlobalDeaths = 0;
 let lastDoneBosses = 0;
 let lastTotalBosses = 0;
-let lastMaleniaDeaths = 0;
 
 const MAIN_BOSSES = [
   "Margit, das Grausame Mal",
@@ -655,34 +560,13 @@ function renderTopDeaths(allBosses) {
   container.style.display = "flex";
 }
 
-/* ================= MALENIA RENDER ================= */
-
-function renderMalenia(allBosses) {
-  const countEl = document.getElementById("malenia-death-count");
-
-  // Findet die Boss-Zeile, deren Name "malenia" enthält (case-insensitive).
-  const maleniaBoss = allBosses.find(b => b.boss.toLowerCase().includes("malenia"));
-  const deaths = maleniaBoss ? maleniaBoss.deaths : 0;
-
-  if (deaths !== lastMaleniaDeaths) {
-    countEl.classList.remove("malenia-death-animate");
-    void countEl.offsetWidth;
-    countEl.classList.add("malenia-death-animate");
-  }
-  countEl.innerText = deaths;
-  lastMaleniaDeaths = deaths;
-
-  document.getElementById("malenia-container").style.display = "flex";
-}
-
 /* ================= DATA LOAD ================= */
 
 async function loadData() {
-  const pinnedArea     = document.getElementById("pinned-area");
-  const content        = document.getElementById("content");
-  const wrapper        = document.querySelector(".wrapper");
-  const topContainer   = document.getElementById("top-deaths-container");
-  const maleniaContainer = document.getElementById("malenia-container");
+  const pinnedArea   = document.getElementById("pinned-area");
+  const content      = document.getElementById("content");
+  const wrapper      = document.querySelector(".wrapper");
+  const topContainer = document.getElementById("top-deaths-container");
 
   const res  = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
@@ -695,7 +579,6 @@ async function loadData() {
   const CELLS = {
     hideOverlay:    rows[0]?.c[25]?.v,   // war c[24] (Y→Z)
     topDeathsMode:  rows[1]?.c[25]?.v,   // war c[24] (Y→Z)
-    maleniaMode:    rows[0]?.c[27]?.v,   // NEU: AB1
     baseGameFlag:   rows[0]?.c[17]?.v,   // war c[16] (Q→R)
     dlcFlag:        rows[1]?.c[17]?.v,   // war c[16] (Q→R)
     timerVisible:   rows[0]?.c[14]?.v,   // war c[13] (N→O)
@@ -717,7 +600,6 @@ async function loadData() {
   if (hideOverlay) return;
 
   topDeathsModeActive = isTrue(CELLS.topDeathsMode);
-  maleniaModeActive   = isTrue(CELLS.maleniaMode);
 
   const baseGameFlag = isTrue(CELLS.baseGameFlag);
   const dlcFlag      = isTrue(CELLS.dlcFlag);
@@ -748,7 +630,7 @@ async function loadData() {
 
   const separatorIndex = rows.findIndex(r => r.c[1]?.v?.trim() === "SHADOW OF THE ERDTREE DLC");
 
-  // Alle Bosse für Top-Deaths / Malenia sammeln
+  // Alle Bosse für Top-Deaths sammeln
   const allBossesFlat = [];
 
   rows.forEach((r, index) => {
@@ -786,7 +668,7 @@ async function loadData() {
     globalTotalBosses++;
     if (done) globalDoneBosses++;
 
-    // Für Top-Deaths / Malenia
+    // Für Top-Deaths
     allBossesFlat.push({ boss, done, deaths, pinned });
 
     if (!areas[area]) {
@@ -825,23 +707,6 @@ async function loadData() {
   bossEl.innerText = `🏆 Bosse: ${globalDoneBosses} / ${globalTotalBosses}`;
   lastDoneBosses = globalDoneBosses;
   lastTotalBosses = globalTotalBosses;
-
-  // ================================
-  // MALENIA MODE (AB1 = TRUE) — höchste Priorität
-  // ================================
-  if (maleniaModeActive) {
-    content.style.display = "none";
-    pinnedArea.style.display = "none";
-    topContainer.style.display = "none";
-    wrapper.classList.remove("simple-mode");
-    wrapper.classList.add("malenia-mode");
-    renderMalenia(allBossesFlat);
-    return;
-  }
-
-  // Normalmodus: Malenia-Panel verstecken + Spezial-Theme entfernen
-  maleniaContainer.style.display = "none";
-  wrapper.classList.remove("malenia-mode");
 
   // ================================
   // TOP-DEATHS MODE (Y2 = TRUE)
@@ -1043,7 +908,7 @@ let lastTimestamp = null;
 function smoothScroll(timestamp) {
   requestAnimationFrame(smoothScroll);
 
-  if (autoScrollPaused || topDeathsModeActive || maleniaModeActive) {
+  if (autoScrollPaused || topDeathsModeActive) {
     lastTimestamp = null;
     return;
   }
